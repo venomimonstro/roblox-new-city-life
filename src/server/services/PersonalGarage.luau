@@ -45,10 +45,23 @@ local function spawnSelected(player: Player): boolean
         return false
     end
     local existing = active[player.UserId]
-    if existing and existing.Model.Parent and existing.Seat.Occupant then return false end
-    -- Create before removing prior vehicle so failed creation does not remove it.
+    if existing and existing.Model.Parent then
+        -- Reconfigure the parked chassis in-place. Spawning a second physical car
+        -- at the same coordinates before deleting the old one causes collisions.
+        if existing.Seat.Occupant
+            or existing.Chassis.AssemblyLinearVelocity.Magnitude > 2 then return false end
+        local build = data.garage[data.selectedVehicleId]
+        existing.Model:SetAttribute("EngineId", build.engineId)
+        existing.Model:SetAttribute("GearboxId", build.gearboxId)
+        existing.Model:SetAttribute("TireId", build.tireId)
+        existing.Model:SetAttribute("OwnedVehicleId", data.selectedVehicleId)
+        return true
+    end
     local car = VehicleService.SpawnForPlayer(player, data.garage[data.selectedVehicleId], positionFor(slot))
-    if not car then return false end
+    if not car then
+        if not existing then slotByUser[player.UserId] = nil end
+        return false
+    end
     car.Model:SetAttribute("OwnedVehicleId", data.selectedVehicleId)
     active[player.UserId] = car
     if existing then VehicleService.Despawn(existing) end
