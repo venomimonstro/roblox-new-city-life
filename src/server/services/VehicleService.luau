@@ -190,6 +190,7 @@ function VehicleService.SpawnForPlayer(player: Player, build: any, position: Vec
     end
     local car: Factory.Car = created
     car.Model:SetAttribute("OwnerUserId", player.UserId)
+    Factory.ApplyCatalog(car, build.catalogId)
     car.Model:SetAttribute("EngineId", build.engineId)
     car.Model:SetAttribute("GearboxId", build.gearboxId)
     car.Model:SetAttribute("TireId", build.tireId)
