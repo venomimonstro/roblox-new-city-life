@@ -7,19 +7,28 @@ local levels: {[number]: number} = {}
 local lastIncident: {[number]: number} = {}
 local readThrottle: {[number]: number} = {}
 local remote: RemoteEvent? = nil
+local incidentHandler: ((Player, number, string) -> ())? = nil
 
 function Wanted.GetLevel(player: Player): number
     return levels[player.UserId] or 0
 end
 
+function Wanted.SetIncidentHandler(callback: (Player, number, string) -> ())
+    incidentHandler = callback
+end
+
 function Wanted.AddHeat(player: Player, amount: number, _reason: string): number
     if player.Parent ~= Players or type(amount) ~= "number"
-        or amount % 1 ~= 0 or amount < 1 or amount > 3 then return 0 end
+        or amount % 1 ~= 0 or amount < 1 or amount > 5 then return 0 end
     local id = player.UserId
     local level = math.clamp((levels[id] or 0) + amount, 0, 5)
     levels[id] = level
     lastIncident[id] = os.clock()
     if remote then remote:FireClient(player, level) end
+    if incidentHandler then
+        local ok, err = pcall(incidentHandler, player, amount, _reason)
+        if not ok then warn("[StreetCity] District incident failed: " .. tostring(err)) end
+    end
     return level
 end
 
