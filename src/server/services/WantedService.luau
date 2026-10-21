@@ -4,6 +4,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Wanted = {}
 local levels: {[number]: number} = {}
+local wantedSince: {[number]: number} = {}
 local lastIncident: {[number]: number} = {}
 local readThrottle: {[number]: number} = {}
 local remote: RemoteEvent? = nil
@@ -21,6 +22,7 @@ function Wanted.AddHeat(player: Player, amount: number, _reason: string): number
     if player.Parent ~= Players or type(amount) ~= "number"
         or amount % 1 ~= 0 or amount < 1 or amount > 5 then return 0 end
     local id = player.UserId
+    if (levels[id] or 0) == 0 then wantedSince[id] = os.clock() end
     local level = math.clamp((levels[id] or 0) + amount, 0, 5)
     levels[id] = level
     lastIncident[id] = os.clock()
@@ -30,6 +32,18 @@ function Wanted.AddHeat(player: Player, amount: number, _reason: string): number
         if not ok then warn("[StreetCity] District incident failed: " .. tostring(err)) end
     end
     return level
+end
+
+function Wanted.IsBountyEligible(player: Player): boolean
+    return player.Parent == Players and (levels[player.UserId] or 0) >= 3
+        and os.clock() - (wantedSince[player.UserId] or os.clock()) >= 45
+end
+
+function Wanted.ResetAfterDeath(player: Player)
+    local id = player.UserId
+    levels[id] = nil
+    wantedSince[id] = nil
+    if remote and player.Parent == Players then remote:FireClient(player, 0) end
 end
 
 function Wanted.ClosestWanted(position: Vector3, radius: number): Player?
@@ -62,6 +76,7 @@ function Wanted.Start()
     end)
     Players.PlayerRemoving:Connect(function(player)
         levels[player.UserId] = nil
+        wantedSince[player.UserId] = nil
         lastIncident[player.UserId] = nil
         readThrottle[player.UserId] = nil
     end)
@@ -74,6 +89,7 @@ function Wanted.Start()
                 local level = levels[id] or 0
                 if level > 0 and now - (lastIncident[id] or now) >= 100 then
                     levels[id] = level - 1
+                    if level == 1 then wantedSince[id] = nil end
                     lastIncident[id] = now
                     if remote then remote:FireClient(player, level - 1) end
                 end
