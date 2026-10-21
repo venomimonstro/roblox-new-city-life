@@ -86,6 +86,18 @@ wanted.TextSize = 22
 wanted.Text = ""
 wanted.Parent = gui
 
+local bodyStats = Instance.new("TextLabel")
+bodyStats.Name = "BodyStats"
+bodyStats.Position = UDim2.fromOffset(14, 88)
+bodyStats.Size = UDim2.fromOffset(320, 24)
+bodyStats.BackgroundTransparency = 1
+bodyStats.TextXAlignment = Enum.TextXAlignment.Left
+bodyStats.Font = Enum.Font.Gotham
+bodyStats.TextSize = 13
+bodyStats.TextColor3 = Color3.fromRGB(210, 220, 220)
+bodyStats.Text = ""
+bodyStats.Parent = gui
+
 task.spawn(function()
     local remote = ReplicatedStorage:WaitForChild("StreetCityWantedState", 15)
     if not remote or not remote:IsA("RemoteEvent") then return end
@@ -100,9 +112,17 @@ end)
 task.spawn(function()
     local remote = ReplicatedStorage:WaitForChild("StreetCityProfileState", 8)
     if not remote or not remote:IsA("RemoteEvent") then return end
-    remote.OnClientEvent:Connect(function(credits: any, cars: any, selected: any)
-        if type(credits) ~= "number" or type(cars) ~= "number" or type(selected) ~= "string" then return end
-        wallet.Text = string.format("Credits: %d  |  Cars: %d  |  %s", credits, cars, string.sub(selected, 1, 24))
+    remote.OnClientEvent:Connect(function(credits: any, cars: any, selected: any,
+        bank: any, goods: any, fitness: any, bodyFat: any)
+        if type(credits) ~= "number" or type(cars) ~= "number"
+            or type(selected) ~= "string" then return end
+        local safeBank = if type(bank) == "number" then bank else 0
+        local loot = if type(goods) == "number" then goods else 0
+        wallet.Text = string.format("Cash %d | Bank %d | Cars %d | Goods %d",
+            credits, safeBank, cars, loot)
+        if type(fitness) == "number" and type(bodyFat) == "number" then
+            bodyStats.Text = string.format("Fitness %d | Body fat %d", fitness, bodyFat)
+        end
     end)
     remote:FireServer()
 end)
@@ -165,8 +185,76 @@ ContextActionService:BindAction("StreetCityLights", toggleLights, true, Enum.Key
 ContextActionService:SetTitle("StreetCityLights", "Lights")
 ContextActionService:SetPosition("StreetCityLights", UDim2.fromScale(0.8, 0.63))
 
+local weatherName = Instance.new("TextLabel")
+weatherName.Name = "WeatherIndicator"
+weatherName.Position = UDim2.fromOffset(14, 112)
+weatherName.Size = UDim2.fromOffset(280, 22)
+weatherName.BackgroundTransparency = 1
+weatherName.Font = Enum.Font.Gotham
+weatherName.TextColor3 = Color3.fromRGB(215, 226, 235)
+weatherName.TextSize = 13
+weatherName.TextXAlignment = Enum.TextXAlignment.Left
+weatherName.Parent = gui
+
+local rainPart = Instance.new("Part")
+rainPart.Name = "LocalWeatherRain"
+rainPart.Size = Vector3.new(60, 0.1, 60)
+rainPart.Transparency = 1
+rainPart.Anchored = true
+rainPart.CanCollide = false
+rainPart.CanQuery = false
+rainPart.CanTouch = false
+rainPart.Parent = workspace.CurrentCamera or workspace
+
+local drops = Instance.new("ParticleEmitter")
+drops.Name = "RainDrops"
+drops.Enabled = false
+drops.EmissionDirection = Enum.NormalId.Bottom
+drops.Rate = 140
+drops.Lifetime = NumberRange.new(0.35, 0.6)
+drops.Speed = NumberRange.new(55, 75)
+drops.Acceleration = Vector3.new(0, -40, 0)
+drops.SpreadAngle = Vector2.new(6, 6)
+drops.Size = NumberSequence.new(0.09)
+drops.Transparency = NumberSequence.new(0.3)
+drops.Color = ColorSequence.new(Color3.fromRGB(170, 200, 225))
+drops.Parent = rainPart
+
+local function updateWeather()
+    local condition = ReplicatedStorage:GetAttribute("StreetCityWeather")
+    if type(condition) ~= "string" then condition = "Clear" end
+    weatherName.Text = "Weather: " .. condition
+    drops.Enabled = condition == "Rain" or condition == "Storm"
+    drops.Rate = if condition == "Storm" then 240 else 140
+end
+ReplicatedStorage:GetAttributeChangedSignal("StreetCityWeather"):Connect(updateWeather)
+updateWeather()
+
+local equipmentRemote = ReplicatedStorage:WaitForChild("StreetCityEquipmentAction", 20)
+local function useEquipment(_action: string, state: Enum.UserInputState)
+    if state ~= Enum.UserInputState.Begin then return Enum.ContextActionResult.Pass end
+    local character = player.Character
+    if not character then return Enum.ContextActionResult.Pass end
+    for _, child in character:GetChildren() do
+        if child:IsA("Tool") and child:GetAttribute("StreetCityEquipment") then
+            if equipmentRemote and equipmentRemote:IsA("RemoteEvent") then
+                equipmentRemote:FireServer()
+            end
+            return Enum.ContextActionResult.Sink
+        end
+    end
+    return Enum.ContextActionResult.Pass
+end
+ContextActionService:BindAction("CityEquipmentUse", useEquipment, true,
+    Enum.KeyCode.F, Enum.UserInputType.MouseButton1, Enum.KeyCode.ButtonR2)
+ContextActionService:SetTitle("CityEquipmentUse", "Use")
+ContextActionService:SetPosition("CityEquipmentUse", UDim2.fromScale(0.82, 0.77))
+
 local elapsed = 0
 RunService.RenderStepped:Connect(function(dt)
+    if workspace.CurrentCamera then
+        rainPart.CFrame = workspace.CurrentCamera.CFrame * CFrame.new(0, 18, -6)
+    end
     elapsed += dt
     if elapsed < 0.1 then
         return
