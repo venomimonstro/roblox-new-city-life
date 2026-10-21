@@ -31,6 +31,8 @@ function Schema.New(userId: number?)
     return {
         schemaVersion = 4,
         credits = 0, bankCredits = 0, communityBankCredits = 0, stolenGoods = 0,
+        homeCredits = 0, medicalDebt = 0, deathCount = 0,
+        securityBonds = {},
         nutrition = 80, fitness = 15, bodyFat = 25,
         allegiance = "independent", allegianceChangedAt = 0,
         guards = 0, henchmen = 0,
@@ -147,8 +149,39 @@ function Schema.Decode(raw: any): any?
         if not int(allegianceChangedAt, 0, 5000000000)
             or not int(guards, 0, 3) or not int(henchmen, 0, 3) then return nil end
     end
+    -- Optional V4 extensions must be migrated without dropping bank balances,
+    -- garage inventory or existing personal property titles.
+    local homeCredits, medicalDebt, deathCount = 0, 0, 0
+    local securityBonds = {}
+    if raw.schemaVersion == 4 then
+        if raw.homeCredits ~= nil then
+            if not int(raw.homeCredits, 0, 10000000000) then return nil end
+            homeCredits = raw.homeCredits
+        end
+        if raw.medicalDebt ~= nil then
+            if not int(raw.medicalDebt, 0, 1000000) then return nil end
+            medicalDebt = raw.medicalDebt
+        end
+        if raw.deathCount ~= nil then
+            if not int(raw.deathCount, 0, 100000000) then return nil end
+            deathCount = raw.deathCount
+        end
+        if raw.securityBonds ~= nil then
+            if type(raw.securityBonds) ~= "table" then return nil end
+            local valid = {}
+            for _, district in require(script.Parent:WaitForChild("DistrictConfig")) do
+                valid[district.id] = true
+            end
+            for id, shares in pairs(raw.securityBonds) do
+                if not valid[id] or not int(shares, 1, 3) then return nil end
+                securityBonds[id] = shares
+            end
+        end
+    end
     return {
         schemaVersion = 4, credits = raw.credits,
+        homeCredits = homeCredits, medicalDebt = medicalDebt,
+        deathCount = deathCount, securityBonds = securityBonds,
         bankCredits = bankCredits, communityBankCredits = communityBankCredits,
         stolenGoods = stolenGoods, nutrition = nutrition, fitness = fitness,
         bodyFat = bodyFat, realEstate = propertyInfo, ownedProperties = deeds,
