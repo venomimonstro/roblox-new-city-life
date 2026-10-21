@@ -43,6 +43,9 @@ function Housing.Assign(player: Player): number?
         end
     end
     warn("[StreetCity] No home plot available for player " .. tostring(id))
+    if player.Parent == Players then
+        player:Kick("This city server is full. Please join another server.")
+    end
     return nil
 end
 
