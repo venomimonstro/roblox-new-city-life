@@ -94,14 +94,38 @@ function ProfileService.Mutate(player: Player, edit: (any) -> boolean): boolean
         return valid
     end
     local acceptedInTransform = false
+    local rejectedByRule = false
+    local invalidOrLost = false
     local ok, output = pcall(function()
         return store:UpdateAsync(key(player), function(old)
+            -- UpdateAsync can invoke this callback repeatedly on write conflicts.
             acceptedInTransform = false
-            if not owned(old) then return nil end
+            rejectedByRule = false
+            invalidOrLost = false
+            if not owned(old) then
+                invalidOrLost = true
+                return nil
+            end
             local candidate = Schema.Decode(old.data)
-            if not candidate then return nil end
+            if not candidate then
+                invalidOrLost = true
+                return nil
+            end
             local safe, accepted = pcall(edit, candidate)
-            if not safe or accepted ~= true or not Schema.Decode(candidate) then return nil end
+            if not safe then
+                invalidOrLost = true
+                return nil
+            end
+            if accepted ~= true then
+                -- A normal business-rule rejection cancels UpdateAsync.
+                -- Roblox returns nil for that cancellation, NOT the old record.
+                rejectedByRule = true
+                return nil
+            end
+            if not Schema.Decode(candidate) then
+                invalidOrLost = true
+                return nil
+            end
             acceptedInTransform = true
             return {owner = token, leaseUntil = os.time() + LEASE, data = candidate}
         end)
@@ -111,17 +135,20 @@ function ProfileService.Mutate(player: Player, edit: (any) -> boolean): boolean
     if confirmed then
         profiles[id] = Schema.Decode(output.data)
         emitSummary(player)
-    elseif not ok or not owned(output) then
-        -- Ownership cannot be proven; stop all further account mutations.
+    elseif ok and rejectedByRule and not invalidOrLost and output == nil then
+        -- Do not kick for insufficient credits / duplicate operation.
+        -- Leave the validated cached profile alone; renewal later rereads storage.
+    else
+        -- Missing ownership proof, transform error or indeterminate write status.
+        -- Do not allow further player mutations until a fresh session is loaded.
         profiles[id] = nil
         if player.Parent == Players then
             task.defer(function()
-                if player.Parent == Players then player:Kick("Profile lock unconfirmed. Please reconnect.") end
+                if player.Parent == Players then
+                    player:Kick("Profile lock unconfirmed. Please reconnect.")
+                end
             end)
         end
-    elseif Schema.Decode(output.data) then
-        -- Rejected business rule. Use fresh snapshot and report failure.
-        profiles[id] = Schema.Decode(output.data)
     end
     busy[id] = nil
     if not ok then warn("[StreetCity] Profile mutation failed for user " .. tostring(id)) end
