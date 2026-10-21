@@ -182,14 +182,13 @@ function VehicleService.SpawnForPlayer(player: Player, build: any, position: Vec
     if not folder then return nil end
     local success, created = pcall(function()
         -- Personal parking follows east-west streets (z=+/-200).
-        return Factory.Create(folder, position, math.pi / 2)
+        return Factory.Create(folder, position, math.pi / 2, player.UserId)
     end)
     if not success then
         warn("[StreetCity] Vehicle creation failed: " .. tostring(created))
         return nil
     end
     local car: Factory.Car = created
-    car.Model:SetAttribute("OwnerUserId", player.UserId)
     Factory.ApplyCatalog(car, build.catalogId)
     car.Model:SetAttribute("EngineId", build.engineId)
     car.Model:SetAttribute("GearboxId", build.gearboxId)
