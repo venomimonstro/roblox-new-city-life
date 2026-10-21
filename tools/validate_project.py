@@ -32,6 +32,8 @@ REQUIRED = (
     "src/server/services/GarageMarketplaceService.luau",
     "src/server/services/RaceService.luau",
     "src/server/services/ProfileService.luau",
+    "src/server/services/StartupContract.luau",
+    "tools/release_gate.py",
     "docs/architecture.md",
     "docs/roadmap.md",
     "docs/quality.md",
@@ -126,6 +128,27 @@ def main() -> None:
         raise SystemExit("Studio regression: isolated non-production credit grant missing")
     if 'NextActionHint' not in hud or 'Shop_Install ' not in smoke:
         raise SystemExit("User journey regression: HUD guidance or install smoke checks missing")
+
+    production_gate = (ROOT / "src/server/services/StartupContract.luau").read_text(encoding="utf-8")
+    if 'StartupContract.Validate()' not in bootstrap:
+        raise SystemExit("P0: critical runtime gameplay services not validated at startup")
+    for name in ("FindMyCarTerminal", "PersonalGarageTerminal", "TimeTrialStart",
+                 "VehicleInput", "StreetCityProfileState", "ActiveVehicles"):
+        if name not in production_gate:
+            raise SystemExit("P0: startup contract missing " + name)
+
+    race_source = (ROOT / "src/server/services/RaceService.luau").read_text(encoding="utf-8")
+    if "tryStart(player)" not in race_source or "startArmed[id] = false" not in race_source:
+        raise SystemExit("P0: automatic race start or rearm guard missing")
+
+    factory_source = (ROOT / "src/server/services/VehicleFactory.luau").read_text(encoding="utf-8")
+    if 'model:SetAttribute("OwnerUserId", ownerUserId)' not in factory_source:
+        raise SystemExit("P0: vehicle owner not assigned before public parenting")
+    if 'Factory.Create(folder, position, math.pi / 2, player.UserId)' not in vehicle:
+        raise SystemExit("P0: personal vehicle creation lacks ownership")
+
+    if "local function activeStore()" not in profile_source or "for attempt = 1, 8 do" not in profile_source:
+        raise SystemExit("P1: rejoin must allow bounded lease acquisition retry")
 
     workflows = ROOT / ".github" / "workflows"
     if workflows.exists() and any(workflows.iterdir()):
