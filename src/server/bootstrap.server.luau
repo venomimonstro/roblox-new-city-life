@@ -8,6 +8,7 @@ local DistrictService = require(Services:WaitForChild("DistrictService"))
 local GarageService = require(Services:WaitForChild("GarageService"))
 local ProfileService = require(Services:WaitForChild("ProfileService"))
 local PersonalGarage = require(Services:WaitForChild("PersonalGarage"))
+local HousingService = require(Services:WaitForChild("HousingService"))
 local RaceService = require(Services:WaitForChild("RaceService"))
 local GarageMarketplaceService = require(Services:WaitForChild("GarageMarketplaceService"))
 local StartupContract = require(Services:WaitForChild("StartupContract"))
@@ -16,6 +17,7 @@ local success, err = pcall(function()
     ProfileService.Start() -- Uses isolated memory-only profiles in unpublished Studio
     WorldService.Start()
     DistrictService.Start()
+    HousingService.Start() -- Homes exist before personal vehicle spawn and respawn
     local testCar = VehicleService.Start()
     if testCar then GarageService.Start(testCar) end
     PersonalGarage.Start()
