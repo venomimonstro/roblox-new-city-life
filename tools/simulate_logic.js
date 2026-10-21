@@ -130,3 +130,28 @@ for(const name of result.tests) console.log('PASS '+name);
 for(const failure of result.failed) console.error('FAIL '+failure.name+': '+failure.error);
 console.log('Simulation: '+result.passed+' passed, '+result.failed.length+' failed');
 if(result.failed.length) process.exitCode=1;
+
+const fs = require("node:fs");
+const path = require("node:path");
+const root = path.resolve(__dirname, "..");
+const sourceContracts = [["src/server/services/ProfileService.luau",["MutationOutcome.Classify(","confirmedData = Schema.Decode(output.data)","quarantined[id] = true","quarantined[player.UserId] = true","activeStore():UpdateAsync"]],["src/server/services/RaceService.luau",["settling[id] = true","settling[id] = nil","RaceValidation.PositionPlausible","pcall(function()"]],["src/server/services/PersonalGarage.luau",["local safe, result = pcall(spawnSelected, player)","return result == true","Rules.SelectVehicle(profile"]],["src/server/services/VehicleService.luau",["physicsAccumulator < 1 / 30","raycastCache[car.Model] = nil","input.last < 0.45"]],["src/shared/ProfileMutationOutcome.luau",["not rejectedByRule","not invalidOrLost"]],["src/server/services/GarageMarketplaceService.luau",["Rules.PurchasePart","Rules.PurchaseVehicle","Rules.InstallPart"]],["src/shared/ProfileSchema.luau",["schemaVersion = 2","MAX_CARS = 8"]],["src/shared/GarageTransactions.luau",["record(profile, operationId)","profile.credits -="]]];
+let verified = 0;
+for (const [relative, snippets] of sourceContracts) {
+  let source;
+  try { source = fs.readFileSync(path.join(root, relative), "utf8"); }
+  catch (error) { console.error("FAIL missing source "+relative+" "+error); process.exitCode=1; continue; }
+  for (const snippet of snippets) {
+    if (!source.includes(snippet)) {
+      console.error("FAIL source contract "+relative+": "+snippet);
+      process.exitCode=1;
+    } else verified++;
+  }
+}
+const boot = fs.readFileSync(path.join(root, "src/server/bootstrap.server.luau"), "utf8");
+if (boot.indexOf("GarageMarketplaceService.Start()") === -1
+  || boot.indexOf("RaceService.Start()") === -1
+  || boot.indexOf("GarageMarketplaceService.Start()") > boot.indexOf("RaceService.Start()")) {
+  console.error("FAIL bootstrap order: marketplace must start before race notifications");
+  process.exitCode=1;
+} else verified++;
+console.log("Source contracts: "+verified+" / "+(sourceContracts.reduce((n,x)=>n+x[1].length,1)));
