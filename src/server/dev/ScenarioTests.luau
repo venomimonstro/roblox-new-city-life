@@ -52,6 +52,16 @@ function Sim.Run()
         Course.Points[#Course.Points], Course.CheckpointRadius),
         "final checkpoint not accepted while parked on penultimate")
 
+    check(not Race.SegmentTimePlausible(Vector3.zero,
+        Vector3.new(100, 0, 0), 0.2, 100, Course.CheckpointRadius),
+        "impossible checkpoint arrival rejected")
+    check(Race.SegmentTimePlausible(Vector3.zero,
+        Vector3.new(100, 0, 0), 0.7, 100, Course.CheckpointRadius),
+        "valid boundary-to-boundary arrival accepted")
+    check(not Race.PositionPlausible(Vector3.zero,
+        Vector3.new(100, 0, 0), 0.1, Course.MaxSpeed),
+        "teleport-like displacement rejected")
+
     -- Twenty different completed races earn enough for a street coupe.
     for i = 1, 20 do
         local id = "race_sim_" .. tostring(i) .. "_unique"
