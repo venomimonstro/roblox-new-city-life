@@ -56,7 +56,9 @@ end
 function Rules.InstallPart(profile: any, vehicleId: string, offerId: string, operationId: string): boolean
     local car = profile.garage[vehicleId]
     local offer = Offers[offerId]
-    if not car or not offer or (profile.inventory[offerId] or 0) < 1
+    if not car or not offer or (offer.slot ~= "engineId"
+        and offer.slot ~= "gearboxId" and offer.slot ~= "tireId")
+        or (profile.inventory[offerId] or 0) < 1
         or car[offer.slot] == offer.partId then return false end
     local candidate = {
         engineId = car.engineId, gearboxId = car.gearboxId, tireId = car.tireId,
