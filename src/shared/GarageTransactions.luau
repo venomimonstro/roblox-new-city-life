@@ -87,6 +87,16 @@ function Rules.AwardCredits(profile: any, amount: number, operationId: string): 
     return true
 end
 
+-- Reusable debit for server-authorized services such as guarding/police grants.
+function Rules.SpendCredits(profile: any, amount: number, operationId: string): boolean
+    if type(amount) ~= "number" or amount % 1 ~= 0
+        or amount < 1 or amount > 100000
+        or type(profile.credits) ~= "number" or profile.credits < amount then return false end
+    if not record(profile, operationId) then return false end
+    profile.credits -= amount
+    return true
+end
+
 function Rules.CollectEquipment(profile: any, offerId: string, operationId: string): boolean
     local offer = Offers[offerId]
     if not offer or offer.slot ~= "gear"
