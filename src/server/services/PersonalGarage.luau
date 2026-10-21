@@ -102,7 +102,10 @@ function PersonalGarage.Recall(player: Player): boolean
     ray.FilterType = Enum.RaycastFilterType.Exclude
     ray.FilterDescendantsInstances = {car.Model}
     ray.IgnoreWater = true
-    local ground = workspace:Raycast(pos + Vector3.new(0, 15, 0), Vector3.new(0, -45, 0), ray)
+    -- Start below the garage roof so the ray finds the floor, not the roof:
+    -- otherwise owned vehicles are recalled on TOP of their garages.
+    local ground = workspace:Raycast(pos + Vector3.new(0, 5, 0),
+        Vector3.new(0, -40, 0), ray)
     if not ground or not ground.Instance.CanCollide or ground.Normal.Y < 0.72 then
         return false
     end
