@@ -70,6 +70,7 @@ task.spawn(function()
 end)
 
 local lightsRemote = remotes:WaitForChild("ToggleHeadlights") :: RemoteEvent
+local vehicleInput = remotes:WaitForChild("VehicleInput") :: RemoteEvent
 local messageRemote = remotes:WaitForChild("GarageNotice") :: RemoteEvent
 
 local toast = Instance.new("TextLabel")
@@ -136,6 +137,7 @@ RunService.RenderStepped:Connect(function(dt)
     local seat = currentSeat()
     panel.Visible = seat ~= nil
     if seat then
+        vehicleInput:FireServer(seat.ThrottleFloat, seat.SteerFloat)
         local kmh = seat.AssemblyLinearVelocity.Magnitude * 0.28 * 3.6
         speed.Text = string.format("%03d km/h", math.floor(kmh + 0.5))
     end
