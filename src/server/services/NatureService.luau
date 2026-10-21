@@ -50,8 +50,8 @@ local function animal(parent: Instance, district: any, index: number): any
     local color = if index == 1 then Color3.fromRGB(136, 96, 57)
         elseif index == 2 then Color3.fromRGB(171, 92, 49)
         else Color3.fromRGB(132, 121, 107)
-    local home = Vector3.new(math.floor(district.x / 100) * 100 + 41 + index * 5,
-        1.2, math.floor(district.z / 100) * 100 - 42)
+    local home = Vector3.new(math.floor(district.x / 100) * 100 + 25 + (index - 1) * 100,
+        1.2, math.floor(district.z / 100) * 100 + 25)
     local model = Instance.new("Model")
     model.Name = species .. "_" .. district.id
     model:SetAttribute("WildAnimal", true)
@@ -117,9 +117,9 @@ function Nature.Start()
         for n = 1, 12 do
             -- Tree trunks stay 30+ studs from any global x/z road axis.
             local x = math.floor(district.x / 100) * 100
-                + (math.floor((n - 1) / 3) - 1) * 100 + 38
+                + (math.floor((n - 1) / 3) - 1) * 100 + 30
             local z = math.floor(district.z / 100) * 100
-                + ((n - 1) % 3 - 1) * 100 + 38
+                + ((n - 1) % 3 - 1) * 100 + 30
             tree(zone, Vector3.new(x, 0.1, z), n)
         end
         for n = 1, 3 do
@@ -158,7 +158,7 @@ function Nature.Start()
                 end
                 local delta = Vector3.new(math.cos(obj.angle), 0, math.sin(obj.angle))
                 local nextPos = pivot.Position + delta * step * 2.5
-                if (nextPos - obj.home).Magnitude > 14 then
+                if (nextPos - obj.home).Magnitude > 8 then
                     obj.angle += math.pi
                 else
                     obj.model:PivotTo(CFrame.lookAt(nextPos, nextPos + delta))
