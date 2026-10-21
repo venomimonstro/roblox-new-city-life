@@ -49,6 +49,8 @@ REQUIRED = (
     "src/server/services/ArmoryService.luau",
     "src/server/dev/CityLifeTests.luau",
     "src/server/dev/DistrictEconomyTests.luau",
+    "src/server/dev/SocialSystemsTests.luau",
+    "src/server/services/TerritoryService.luau",
     "src/server/dev/ScenarioTests.luau",
     "src/server/dev/SimulationTests.luau",
     "src/server/services/PersonalGarage.luau",
@@ -212,6 +214,18 @@ def main() -> None:
         raise SystemExit("P0: conflicting wallet-spend function definitions")
     if 'realEstate = propertyInfo' not in profile_schema or 'ownedProperties = deeds' not in profile_schema:
         raise SystemExit("P0: mixed V4 player account state would be truncated")
+
+    for service in ("TerritoryService", "CrewService", "PropertyService",
+                    "BankNetworkService", "NatureService", "DistrictSocietyService"):
+        if service + ".Start()" not in bootstrap:
+            raise SystemExit("P0: incomplete civic city bootstrap: " + service)
+    if "FactionService.Start()" in bootstrap:
+        raise SystemExit("P0: duplicate faction registries produce diverging player teams")
+    if 'WaitForChild("SocialSystemsTests")).Run()' not in bootstrap:
+        raise SystemExit("Social systems Studio acceptance suite not wired")
+    if "Rules.SetAllegiance" not in (
+        ROOT / "src/server/services/CrewService.luau").read_text(encoding="utf-8"):
+        raise SystemExit("P0: gang and federal teams cannot claim their territory")
 
     workflows = ROOT / ".github" / "workflows"
     if workflows.exists() and any(workflows.iterdir()):
