@@ -2,6 +2,7 @@
 -- Schema V2. Decode accepts V1; unknown future formats fail closed.
 local Build = require(script.Parent:WaitForChild("VehicleBuild"))
 local Vehicles = require(script.Parent:WaitForChild("VehicleCatalog"))
+local Offers = require(script.Parent:WaitForChild("ShopCatalog"))
 local Schema = {}
 local MAX_CARS = 8
 local MAX_ITEMS = 48
@@ -67,10 +68,12 @@ function Schema.Decode(raw: any)
         local items = 0
         for itemId, qty in pairs(raw.inventory) do
             items += 1
-            if items > MAX_ITEMS or not keyOk(itemId) or not finiteInteger(qty, 1, 99) then return nil end
+            if items > MAX_ITEMS or not keyOk(itemId) or Offers[itemId] == nil
+                or not finiteInteger(qty, 1, 99) then return nil end
             inventory[itemId] = qty
         end
         local seen = {}
+        if #raw.recentOperations > MAX_OPERATIONS then return nil end
         for _, opId in ipairs(raw.recentOperations) do
             if #operations >= MAX_OPERATIONS or not keyOk(opId) or seen[opId] then return nil end
             seen[opId] = true
