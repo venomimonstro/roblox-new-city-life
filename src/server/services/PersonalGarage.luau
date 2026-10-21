@@ -11,6 +11,7 @@ local PersonalGarage = {}
 local active: {[number]: any} = {}
 local slotByUser: {[number]: number} = {}
 local working: {[number]: boolean} = {}
+local locateCooldown: {[number]: number} = {}
 local pendingSync: {[number]: boolean} = {}
 
 local function reserveSlot(userId: number): number?
@@ -160,11 +161,55 @@ local function createTerminal()
     end)
 end
 
+local function createCarLocator()
+    local root = workspace:WaitForChild("StreetCityPrototypeWorld")
+    local stand = Instance.new("Part")
+    stand.Name = "FindMyCarTerminal"
+    stand.Size = Vector3.new(5, 2, 5)
+    stand.Position = Vector3.new(17, 0.1, 7)
+    stand.Anchored = true
+    stand.CanCollide = false
+    stand.CanQuery = false
+    stand.Material = Enum.Material.Neon
+    stand.Color = Color3.fromRGB(28, 180, 166)
+    stand.Parent = root
+    local prompt = Instance.new("ProximityPrompt")
+    prompt.ObjectText = "My vehicle"
+    prompt.ActionText = "Find my car"
+    prompt.MaxActivationDistance = 13
+    prompt.RequiresLineOfSight = false
+    prompt.Parent = stand
+    prompt.Triggered:Connect(function(player: Player)
+        local now = os.clock()
+        local id = player.UserId
+        if now - (locateCooldown[id] or 0) < 3 then return end
+        local character = player.Character
+        local human = character and character:FindFirstChildOfClass("Humanoid")
+        local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+        if not human or human.Health <= 0 or human.SeatPart or not rootPart then return end
+        if player:DistanceFromCharacter(stand.Position) > 16 then return end
+        if not ProfileService.IsLoaded(player) then return end
+        locateCooldown[id] = now
+        local car = active[id]
+        if not car or not car.Model.Parent then
+            if not PersonalGarage.Refresh(player) then return end
+            car = active[id]
+        end
+        if not car or not car.Model.Parent
+            or car.Model:GetAttribute("OwnerUserId") ~= id then return end
+        if car.Seat.Occupant or car.Chassis.AssemblyLinearVelocity.Magnitude > 3 then return end
+        -- Only this server-selected owned car position can be used as a destination.
+        local destination = car.Chassis.Position + Vector3.new(0, 3.5, 8)
+        character:PivotTo(CFrame.new(destination))
+    end)
+end
+
 function PersonalGarage.Start()
     if RunService:IsStudio() and game.GameId == 0 then
         warn("[StreetCity] Personal garage uses ephemeral Studio profile; no progress saved")
     end
     createTerminal()
+    createCarLocator()
     local function awaitProfile(player: Player)
         task.spawn(function()
             for _ = 1, 100 do
