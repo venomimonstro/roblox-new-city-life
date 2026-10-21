@@ -9,6 +9,8 @@ local Districts = require(ReplicatedStorage.Shared:WaitForChild("DistrictConfig"
 local Transactions = require(ReplicatedStorage.Shared:WaitForChild("GarageTransactions"))
 local ProfileService = require(script.Parent:WaitForChild("ProfileService"))
 local Wanted = require(script.Parent:WaitForChild("WantedService"))
+local Society = require(script.Parent:WaitForChild("DistrictSocietyService"))
+local Dynamics = require(ReplicatedStorage.Shared:WaitForChild("DistrictDynamics"))
 local Citizens = {}
 local actors: {any} = {}
 local PALETTE = {
@@ -70,6 +72,7 @@ local function createCitizen(parent: Instance, district: any, index: number, dis
         model = npc, torso = torso, home = root, index = index,
         angle = (index + districtIndex) * 1.7, nextChange = 0,
         pausedUntil = 0, lastRobbed = 0, lastHit = 0,
+        districtId = district.id, active = true,
     }
     local rob = Instance.new("ProximityPrompt")
     rob.Name = "RobPrompt"
@@ -133,6 +136,28 @@ local function createCitizen(parent: Instance, district: any, index: number, dis
     table.insert(actors, actor)
 end
 
+local function adjustPopulation(districtId: string)
+    local state = Society.GetState(districtId)
+    if not state then return end
+    local count = math.min(4, Dynamics.ResidentCount(state))
+    for _, actor in actors do
+        if actor.districtId == districtId then
+            local active = actor.index <= count
+            if actor.active ~= active then
+                actor.active = active
+                for _, descendant in actor.model:GetDescendants() do
+                    if descendant:IsA("BasePart") and descendant.Name ~= "Root" then
+                        descendant.Transparency = if active then 0 else 1
+                    elseif descendant:IsA("ProximityPrompt") then
+                        descendant.Enabled = active
+                    end
+                end
+                actor.torso.CanTouch = active
+            end
+        end
+    end
+end
+
 -- Cosmetic non-graphic NPC interaction. Server verifies range and line of sight;
 -- no client-provided target or damage amount is ever trusted.
 function Citizens.HitNearest(player: Player, range: number): boolean
@@ -145,6 +170,7 @@ function Citizens.HitNearest(player: Player, range: number): boolean
     local best: any = nil
     local nearest = range
     for _, actor in actors do
+        if not actor.active then continue end
         local distance = actor.torso.Position - root.Position
         if distance.Magnitude < nearest and distance.Magnitude > 1
             and direction:Dot(distance.Unit) > 0.15 then
@@ -177,6 +203,10 @@ function Citizens.Start()
             createCitizen(root, district, index, zoneIndex)
         end
     end
+    for _, district in Districts do adjustPopulation(district.id) end
+    Society.Changed():Connect(function(districtId: string)
+        adjustPopulation(districtId)
+    end)
     local accumulator = 0
     RunService.Heartbeat:Connect(function(dt)
         accumulator += dt
@@ -185,7 +215,7 @@ function Citizens.Start()
         accumulator = 0
         local now = os.clock()
         for _, actor in actors do
-            if now >= actor.pausedUntil then
+            if actor.active and now >= actor.pausedUntil then
                 if now > actor.nextChange then
                     actor.nextChange = now + 3 + actor.index
                     actor.angle += 1.3
