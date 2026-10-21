@@ -50,7 +50,12 @@ local function station(parent: Instance, label: string, pos: Vector3, action: (P
         local now = os.clock()
         if now - (lastAction[player.UserId] or 0) < 1.2 then return end
         lastAction[player.UserId] = now
-        action(player)
+        local success, err = pcall(action, player)
+        if not success then
+            warn("[StreetCity] Shop interaction failed for " .. tostring(player.UserId)
+                .. ": " .. tostring(err))
+            notify(player, "Shop temporarily unavailable. Your balance was not manually changed.")
+        end
     end)
 end
 
