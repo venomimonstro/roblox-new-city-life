@@ -5,6 +5,20 @@ local catalog = {
         name = "Starter Hatchback", price = 0,
         engineId = "stock_i4", gearboxId = "street_5", tireId = "street",
     },
+    -- Fictional American-style starters: distinct silhouette/theme, identical
+    -- drivetrain and handling (no paid or random advantage at game entry).
+    starter_american_sedan = {
+        name = "Liberty Four-Door", price = 0,
+        engineId = "stock_i4", gearboxId = "street_5", tireId = "street",
+    },
+    starter_american_pickup = {
+        name = "Mesa Work Truck", price = 0,
+        engineId = "stock_i4", gearboxId = "street_5", tireId = "street",
+    },
+    starter_american_muscle = {
+        name = "Canyon Classic", price = 0,
+        engineId = "stock_i4", gearboxId = "street_5", tireId = "street",
+    },
     street_coupe = {
         name = "Street Coupe", price = 12000,
         engineId = "sport_i4", gearboxId = "street_5", tireId = "street",
