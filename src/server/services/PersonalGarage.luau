@@ -104,8 +104,7 @@ end
 
 function PersonalGarage.Start()
     if RunService:IsStudio() and game.GameId == 0 then
-        warn("[StreetCity] Persistent personal garage unavailable in unpublished Studio")
-        return
+        warn("[StreetCity] Personal garage uses ephemeral Studio profile; no progress saved")
     end
     createTerminal()
     local function awaitProfile(player: Player)
