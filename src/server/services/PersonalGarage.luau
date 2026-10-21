@@ -70,9 +70,13 @@ function PersonalGarage.Refresh(player: Player): boolean
     local id = player.UserId
     if working[id] then return false end
     working[id] = true
-    local ok = spawnSelected(player)
+    local safe, result = pcall(spawnSelected, player)
     working[id] = nil
-    return ok
+    if not safe then
+        warn("[StreetCity] Personal garage refresh failed: " .. tostring(result))
+        return false
+    end
+    return result == true
 end
 
 local function createTerminal()
@@ -100,19 +104,26 @@ local function createTerminal()
         if current and (current.Seat.Occupant or current.Chassis.AssemblyLinearVelocity.Magnitude > 2) then return end
         if working[player.UserId] or not ProfileService.IsLoaded(player) then return end
         working[player.UserId] = true
-        local selected = ProfileService.Mutate(player, function(profile)
-            local ids = {}
-            for id in pairs(profile.garage) do table.insert(ids, id) end
-            table.sort(ids)
-            if #ids < 2 then return false end
-            local index = table.find(ids, profile.selectedVehicleId)
-            if not index then return false end
-            return Rules.SelectVehicle(profile, ids[index % #ids + 1])
+        local safe, result = pcall(function()
+            local selected = ProfileService.Mutate(player, function(profile)
+                local ids = {}
+                for id in pairs(profile.garage) do table.insert(ids, id) end
+                table.sort(ids)
+                if #ids < 2 then return false end
+                local index = table.find(ids, profile.selectedVehicleId)
+                if not index then return false end
+                return Rules.SelectVehicle(profile, ids[index % #ids + 1])
+            end)
+            if selected and player.Parent == Players then
+                if not spawnSelected(player) then
+                    warn("[StreetCity] Garage selection saved but active car not updated")
+                end
+            end
         end)
-        if selected and player.Parent == Players then
-            spawnSelected(player)
-        end
         working[player.UserId] = nil
+        if not safe then
+            warn("[StreetCity] Personal garage terminal failed: " .. tostring(result))
+        end
     end)
 end
 
