@@ -32,15 +32,15 @@ end
 local function hasTool(player: Player, offerId: string): boolean
     local char = player.Character
     local backpack = player:FindFirstChildOfClass("Backpack")
-    return (char and char:FindFirstChild(offerId) ~= nil)
-        or (backpack and backpack:FindFirstChild(offerId) ~= nil)
+    return (char ~= nil and char:FindFirstChild(offerId) ~= nil)
+        or (backpack ~= nil and backpack:FindFirstChild(offerId) ~= nil)
 end
 
 local function equipAvailable(player: Player)
     local profile = Profile.Read(player)
     if not profile then return end
-    local backpack = player:FindFirstChildOfClass("Backpack")
-    if not backpack then return end
+    local backpack = player:WaitForChild("Backpack", 8)
+    if not backpack or not backpack:IsA("Backpack") then return end
     for _, def in ITEMS do
         if (profile.inventory[def.id] or 0) > 0 and not hasTool(player, def.id) then
             local tool = Instance.new("Tool")
