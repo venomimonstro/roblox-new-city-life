@@ -8,6 +8,7 @@ local VehicleBuild = require(Shared:WaitForChild("VehicleBuild"))
 local Districts = require(Shared:WaitForChild("DistrictConfig"))
 local ProfileSchema = require(Shared:WaitForChild("ProfileSchema"))
 local Transactions = require(Shared:WaitForChild("GarageTransactions"))
+local RaceValidation = require(Shared:WaitForChild("RaceValidation"))
 
 local SmokeTests = {}
 function SmokeTests.Run()
@@ -80,6 +81,17 @@ function SmokeTests.Run()
     local badInventory = ProfileSchema.New()
     badInventory.inventory.unknown_sku = 1
     assert(ProfileSchema.Decode(badInventory) == nil)
-    print("[StreetCity] PASS: vehicle, map, schema migration and credit transaction assertions")
+    assert(RaceValidation.PositionPlausible(Vector3.zero, Vector3.new(0, 0, 90), 1, 100))
+    assert(not RaceValidation.PositionPlausible(Vector3.zero, Vector3.new(0, 0, 500), 1, 100))
+    assert(RaceValidation.CheckpointReached(Vector3.new(4, 0, 0), Vector3.zero, 5))
+    assert(not RaceValidation.CheckpointReached(Vector3.new(10, 0, 0), Vector3.zero, 5))
+    assert(RaceValidation.SegmentTimePlausible(Vector3.zero, Vector3.new(100, 0, 0), 1, 100))
+    assert(not RaceValidation.SegmentTimePlausible(Vector3.zero, Vector3.new(100, 0, 0), 0.1, 100))
+    local noCredit = ProfileSchema.New()
+    assert(not Transactions.PurchasePart(noCredit, "engine_sport_new", "unpaid_part_0001"))
+    assert(noCredit.credits == 0 and noCredit.inventory.engine_sport_new == nil)
+    assert(not Transactions.PurchaseVehicle(noCredit, "street_coupe", "car_unpaid_0001", "unpaid_car_0001"))
+    assert(noCredit.credits == 0 and noCredit.garage.car_unpaid_0001 == nil)
+    print("[StreetCity] PASS: domain smoke assertions incl race validation, economy and migration")
 end
 return SmokeTests
