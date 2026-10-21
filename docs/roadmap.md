@@ -13,7 +13,7 @@ Open world **life simulator**, first release focuses on free exploration + cars 
 | 04 | Road-graph connectivity math | **Partial source implementation** | Render/connect roads, route testing |
 | 05 | Seven district procedural blockouts and connector roads | **Source prototype** | Studio traversal, streaming and visual refinement |
 | 06 | Cube 4D creator tool, asset checker and car catalog | Planned | New car accepted only after validation |
-| 07 | Owned vehicle spawning, garage, persistence | Planned | Rejoin and restore state |
+| 07 | Profile persistence + guarded test garage | **Partial source implementation** | Studio session-lock tests and personal vehicle spawning |
 | 08 | Catalog-backed validated tuning builds | **Domain foundation only** | Server integration, garage UI, used-parts economy |
 | 09 | Road graph, nearby traffic and NPC racers | Planned | Bounded perf budget |
 | 10 | PvP/PvE race routes, anti-shortcut rewards | Planned | Safe race invitation/settlement |
