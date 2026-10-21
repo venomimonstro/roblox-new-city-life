@@ -6,7 +6,7 @@ local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Co
 local VehicleMath = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("VehicleMath"))
 local Factory = require(script.Parent:WaitForChild("VehicleFactory"))
 local Powertrain = require(ReplicatedStorage.Shared:WaitForChild("Powertrain"))
-local Catalog = require(ReplicatedStorage.Shared:WaitForChild("PartsCatalog"))
+local VehicleBuild = require(ReplicatedStorage.Shared:WaitForChild("VehicleBuild"))
 
 local VehicleService = {}
 local cars: { Factory.Car } = {}
@@ -53,8 +53,19 @@ local function updateCar(car: Factory.Car)
     local steer = if seat.Occupant then seat.SteerFloat else 0
     -- Early simulation integration: gear ratios affect drive acceleration. The chassis
     -- is still arcade physics; wheel/suspension constraints are a later milestone.
-    local spec = Catalog.CreateSpec("stock_i4", "street_5", "street")
-    assert(spec ~= nil)
+    local engineId = car.Model:GetAttribute("EngineId")
+    local gearboxId = car.Model:GetAttribute("GearboxId")
+    local tireId = car.Model:GetAttribute("TireId")
+    local spec = VehicleBuild.Resolve({
+        engineId = if type(engineId) == "string" then engineId else "stock_i4",
+        gearboxId = if type(gearboxId) == "string" then gearboxId else "street_5",
+        tireId = if type(tireId) == "string" then tireId else "street",
+    })
+    if not spec then
+        car.DriveForce.Force = Vector3.zero
+        car.YawMotor.AngularVelocity = Vector3.zero
+        return
+    end
     local state = driveState[car.Model]
     if not state then
         state = { gear = 1, rpm = spec.idleRpm }
@@ -91,7 +102,7 @@ local function updateCar(car: Factory.Car)
 
     local mass = root.AssemblyMass
     local traction = VehicleMath.TractionFactor(hit.Material)
-    local grip = cfg.Grip * traction
+    local grip = cfg.Grip * traction * (if tireId == "sport" then 1.2 elseif tireId == "worn" then 0.63 else 1)
     -- Dynamic lateral/longitudinal damping remains bound by the same acceleration envelope.
     car.DriveForce.Force = mass * (
         fwd * acceleration * traction
@@ -120,6 +131,9 @@ function VehicleService.Start()
     lightsRemote.Parent = remoteFolder
 
     local car = Factory.Create(folder, Vector3.new(0, 3.5, -30))
+    car.Model:SetAttribute("EngineId", "stock_i4")
+    car.Model:SetAttribute("GearboxId", "street_5")
+    car.Model:SetAttribute("TireId", "street")
     table.insert(cars, car)
     driveState[car.Model] = { gear = 1, rpm = 850 }
     table.insert(ownershipConnections, car.Seat:GetPropertyChangedSignal("Occupant"):Connect(function()
