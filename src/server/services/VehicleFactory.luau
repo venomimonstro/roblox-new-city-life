@@ -178,7 +178,9 @@ function VehicleFactory.ApplyCatalog(car: Car, catalogId: string): boolean
         end
     end
     local prompt = car.Seat:FindFirstChildOfClass("ProximityPrompt")
-    if prompt then prompt.ObjectText = appearance.name end
+    if prompt and prompt:IsA("ProximityPrompt") then
+        prompt.ObjectText = appearance.name
+    end
     return true
 end
 
