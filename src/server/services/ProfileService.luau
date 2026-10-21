@@ -58,23 +58,52 @@ local function acquire(player: Player)
         emitSummary(player)
         return
     end
-    local ok, output = pcall(function()
-        return activeStore():UpdateAsync(key(player), function(old)
-            if old ~= nil and type(old) ~= "table" then return nil end
-            if old and old.owner ~= nil and old.owner ~= token then
-                if type(old.leaseUntil) ~= "number" or old.leaseUntil > os.time() then return nil end
-            end
-            local data = if old == nil then Schema.New() else Schema.Decode(old.data)
-            if not data then return nil end
-            return {owner = token, leaseUntil = os.time() + LEASE, data = data}
+    local loaded: any = nil
+    local corrupted = false
+    -- A previous server may still be releasing this account's lease.
+    -- Retry a small bounded window rather than immediately kicking on a
+    -- legitimate fast rejoin. No cached profile is exposed until confirmed.
+    for attempt = 1, 8 do
+        if player.Parent ~= Players or closing then break end
+        local invalidRecord = false
+        local ok, output = pcall(function()
+            return activeStore():UpdateAsync(key(player), function(old)
+                if old ~= nil and type(old) ~= "table" then
+                    invalidRecord = true
+                    return nil
+                end
+                if old and old.owner ~= nil and old.owner ~= token then
+                    if type(old.leaseUntil) ~= "number"
+                        or old.leaseUntil > os.time() then return nil end
+                end
+                local data = if old == nil then Schema.New() else Schema.Decode(old.data)
+                if not data then
+                    invalidRecord = true
+                    return nil
+                end
+                return {owner = token, leaseUntil = os.time() + LEASE, data = data}
+            end)
         end)
-    end)
+        if ok and owned(output) then
+            loaded = Schema.Decode(output.data)
+            if loaded then break end
+            invalidRecord = true
+        end
+        if invalidRecord then
+            corrupted = true
+            break
+        end
+        if attempt < 8 then task.wait(1.7) end
+    end
     loading[id] = nil
-    if not ok or not owned(output) or not Schema.Decode(output.data) then
-        if player.Parent == Players then player:Kick("Profile temporarily unavailable.") end
+    if not loaded then
+        if player.Parent == Players then
+            player:Kick(if corrupted then "Profile data invalid; please contact support."
+                else "Profile temporarily unavailable; try reconnecting.")
+        end
         return
     end
-    profiles[id] = Schema.Decode(output.data)
+    profiles[id] = loaded
     quarantined[id] = nil
     emitSummary(player)
     if player.Parent ~= Players or closing then
