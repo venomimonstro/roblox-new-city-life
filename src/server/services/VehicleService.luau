@@ -97,6 +97,7 @@ local function updateCar(car: Factory.Car)
     local spec = state.spec
     if not spec then
         car.DriveForce.Force = Vector3.zero
+        car.SuspensionForce.Force = Vector3.zero
         car.YawMotor.AngularVelocity = Vector3.zero
         return
     end
