@@ -84,45 +84,45 @@ function Shop.Start()
         end)
         notify(player, if success then "Street Coupe added to garage" else "Car purchase denied")
     end)
-    station(world, "Install owned part", Vector3.new(0, 0, -83), function(player)
-        local car = PersonalGarage.GetActive(player)
-        if car and (car.Seat.Occupant or car.Chassis.AssemblyLinearVelocity.Magnitude > 2) then
-            notify(player, "Park and exit the car first")
-            return
-        end
-        local snapshot = ProfileService.Read(player)
-        if not snapshot then return end
-        local chosen: string? = nil
-        local keys = {}
-        for offerId, count in pairs(snapshot.inventory) do
-            if count > 0 then table.insert(keys, offerId) end
-        end
-        table.sort(keys)
-        for _, offerId in keys do
-            local offer = Offers[offerId]
-            local current = snapshot.garage[snapshot.selectedVehicleId]
-            if current and current[offer.slot] ~= offer.partId then
-                chosen = offerId
-                break
-            end
-        end
-        if not chosen then
-            notify(player, "No compatible uninstalled parts")
-            return
-        end
-        local operation = opId()
-        local changed = ProfileService.Mutate(player, function(profile)
-            return Rules.InstallPart(profile, profile.selectedVehicleId, chosen :: string, operation)
-        end)
-        if changed then
-            local refreshed = PersonalGarage.Refresh(player)
-            PersonalGarage.EnsureSynced(player)
-            notify(player, if refreshed then "Part installed: " .. chosen
-                else "Part saved; the parked car will synchronize after the driver exits.")
-        else
-            notify(player, "Installation denied")
-        end
-    end)
+    -- Explicit installation stands avoid silently selecting a different purchased
+    -- part when a player owns multiple SKUs. All validation stays on the server.
+    for index, offerId in keys do
+        local offer = Offers[offerId]
+        station(world, "Install " .. offerId,
+            Vector3.new(-20 + (index - 1) * 10, 0, -83), function(player)
+                local car = PersonalGarage.GetActive(player)
+                if not car or not car.Model.Parent then
+                    notify(player, "Your vehicle is not ready; use Find My Car")
+                    return
+                end
+                if car.Seat.Occupant or car.Chassis.AssemblyLinearVelocity.Magnitude > 2 then
+                    notify(player, "Park and exit your car before installing")
+                    return
+                end
+                local snapshot = ProfileService.Read(player)
+                local selected = snapshot and snapshot.garage[snapshot.selectedVehicleId]
+                if not selected or (snapshot.inventory[offerId] or 0) <= 0 then
+                    notify(player, "You do not own this part: " .. offerId)
+                    return
+                end
+                if selected[offer.slot] == offer.partId then
+                    notify(player, "This part is already installed")
+                    return
+                end
+                local operation = opId()
+                local changed = ProfileService.Mutate(player, function(profile)
+                    return Rules.InstallPart(profile, profile.selectedVehicleId, offerId, operation)
+                end)
+                if changed then
+                    local refreshed = PersonalGarage.Refresh(player)
+                    PersonalGarage.EnsureSynced(player)
+                    notify(player, if refreshed then "Installed: " .. offerId
+                        else "Saved; car will synchronize when parked")
+                else
+                    notify(player, "Installation denied; check profile and inventory")
+                end
+            end)
+    end
 
     Players.PlayerRemoving:Connect(function(player)
         lastAction[player.UserId] = nil
