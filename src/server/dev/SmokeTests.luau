@@ -12,6 +12,7 @@ local ParkingLayout = require(Shared:WaitForChild("ParkingLayout"))
 local Transactions = require(Shared:WaitForChild("GarageTransactions"))
 local RaceValidation = require(Shared:WaitForChild("RaceValidation"))
 local AssetValidator = require(script.Parent.Parent:WaitForChild("services"):WaitForChild("ModelAssetValidator"))
+local VehicleFactory = require(script.Parent.Parent:WaitForChild("services"):WaitForChild("VehicleFactory"))
 
 local SmokeTests = {}
 function SmokeTests.Run()
@@ -150,6 +151,17 @@ function SmokeTests.Run()
     safePart.Size = Vector3.new(60, 2, 9)
     assert(not AssetValidator.Validate(safeModel).ok)
     safeModel:Destroy()
+    -- Real Factory geometry assertion: spawn orientation matches east-west roads.
+    local parkingFixture = Instance.new("Folder")
+    parkingFixture.Name = "SmokeVehicleFactory"
+    parkingFixture.Parent = workspace
+    local car = VehicleFactory.Create(parkingFixture, Vector3.new(0, 1000, 0), math.pi / 2)
+    assert(car.Model:GetAttribute("StreetCityVehicle") == true, "Factory vehicle tag")
+    assert(math.abs(car.Chassis.CFrame.LookVector.X) > 0.98,
+        "Personal car must face along the east-west road")
+    assert(math.abs(car.Chassis.CFrame.LookVector.Z) < 0.1,
+        "Vehicle spawn must not face into pavement / buildings")
+    parkingFixture:Destroy()
     local world = workspace:FindFirstChild("StreetCityPrototypeWorld")
     assert(world and world:FindFirstChild("DistrictBlockouts"), "Missing generated districts")
     assert(world:FindFirstChild("PlayerSpawn"), "Missing player spawn")
