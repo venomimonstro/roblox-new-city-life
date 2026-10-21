@@ -87,6 +87,15 @@ function Rules.AwardCredits(profile: any, amount: number, operationId: string): 
     return true
 end
 
+function Rules.CollectEquipment(profile: any, offerId: string, operationId: string): boolean
+    local offer = Offers[offerId]
+    if not offer or offer.slot ~= "gear"
+        or (profile.inventory[offerId] or 0) > 0 then return false end
+    if not record(profile, operationId) then return false end
+    profile.inventory[offerId] = 1
+    return true
+end
+
 -- Wallet vs secured bank. Server supplies fixed transfer amount; never
 -- client-reported balances. Repeated UpdateAsync callbacks see new snapshots.
 function Rules.TransferBank(profile: any, amount: number, deposit: boolean, operationId: string): boolean
