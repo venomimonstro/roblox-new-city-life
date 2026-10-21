@@ -124,9 +124,13 @@ task.spawn(function()
         wallet.Text = string.format("Cash %d | Secure %d | Local %d | Cars %d | Deeds %d",
             credits, safeBank, localBank, cars, propertyCount)
         if type(allegiance) == "string" then
-            guide.Text = "Faction: " .. allegiance .. " | Stolen goods: " .. loot
+            bodyStats.Text = string.format("Faction %s | Fitness %d | Fat %d | Loot %d",
+                allegiance,
+                if type(fitness) == "number" then fitness else 15,
+                if type(bodyFat) == "number" then bodyFat else 25, loot)
         end
-        if type(fitness) == "number" and type(bodyFat) == "number" then
+        if type(fitness) == "number" and type(bodyFat) == "number"
+            and type(allegiance) ~= "string" then
             bodyStats.Text = string.format("Fitness %d | Body fat %d", fitness, bodyFat)
         end
     end)
