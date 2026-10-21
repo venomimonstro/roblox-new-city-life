@@ -9,7 +9,7 @@ local presets = {
     { name = "Used parts", engineId = "stock_i4", gearboxId = "street_5", tireId = "worn" },
 }
 
-function GarageService.Start(car)
+function GarageService.Start(car: any)
     local root = workspace:WaitForChild("StreetCityPrototypeWorld")
     local stand = Instance.new("Part")
     stand.Name = "TestTuningStand"
@@ -30,7 +30,9 @@ function GarageService.Start(car)
     local current = 1
     local busy = false
     prompt.Triggered:Connect(function(player: Player)
-        if busy or not player.Character or not player.Character:FindFirstChildOfClass("Humanoid") then return end
+        if busy or not player.Character then return end
+        local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+        if not humanoid or humanoid.Health <= 0 then return end
         if player:DistanceFromCharacter(stand.Position) > 11 then return end
         if car.Seat.Occupant ~= nil then return end
         if car.Chassis.AssemblyLinearVelocity.Magnitude > 2 then return end
