@@ -1,39 +1,27 @@
 --!strict
--- Profile storage: fail closed, single in-server mutation lane per account.
+-- Server-owned, fail-closed profile persistence. All edits execute INSIDE UpdateAsync.
+-- Edit callbacks must be pure, synchronous and safe to re-execute on retries.
 local Players = game:GetService("Players")
 local DataStoreService = game:GetService("DataStoreService")
 local HttpService = game:GetService("HttpService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Schema = require(ReplicatedStorage.Shared:WaitForChild("ProfileSchema"))
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local Schema = require(Shared:WaitForChild("ProfileSchema"))
+
 local ProfileService = {}
 local store = DataStoreService:GetDataStore("StreetCityProfiles_v1")
 local token = HttpService:GenerateGUID(false)
 local LEASE = 180
-local profiles: { [number]: any } = {}
-local loading: { [number]: boolean } = {}
-local saving: { [number]: boolean } = {}
+local profiles: {[number]: any} = {}
+local loading: {[number]: boolean} = {}
+local busy: {[number]: boolean} = {}
 local closing = false
-local function key(player: Player): string return "user_" .. tostring(player.UserId) end
 
-local function persist(player: Player, data: any, release: boolean): boolean
-    if not Schema.Decode(data) then return false end
-    -- DataStore transforms may run more than once. No external effects inside callback.
-    local ok, output = pcall(function()
-        return store:UpdateAsync(key(player), function(old)
-            if type(old) ~= "table" or old.owner ~= token then return nil end
-            return {
-                owner = if release then nil else token,
-                leaseUntil = if release then 0 else os.time() + LEASE,
-                data = data,
-            }
-        end)
-    end)
-    if not ok then
-        warn("[StreetCity] Save failed for user " .. player.UserId .. ": " .. tostring(output))
-        return false
-    end
-    return type(output) == "table" and output.owner == (if release then nil else token)
-        and output.data ~= nil
+local function key(player: Player): string
+    return "user_" .. tostring(player.UserId)
+end
+
+local function owned(old: any): boolean
+    return type(old) == "table" and old.owner == token
 end
 
 local function acquire(player: Player)
@@ -48,72 +36,96 @@ local function acquire(player: Player)
             end
             local data = if old == nil then Schema.New() else Schema.Decode(old.data)
             if not data then return nil end
-            return { owner = token, leaseUntil = os.time() + LEASE, data = data }
+            return {owner = token, leaseUntil = os.time() + LEASE, data = data}
         end)
     end)
     loading[id] = nil
-    if not ok or type(output) ~= "table" or output.owner ~= token
-        or not Schema.Decode(output.data) then
-        if player.Parent == Players then player:Kick("Player profile unavailable; reconnect later.") end
+    if not ok or not owned(output) or not Schema.Decode(output.data) then
+        if player.Parent == Players then player:Kick("Profile temporarily unavailable.") end
         return
     end
-    profiles[id] = output.data
-    if player.Parent ~= Players or closing then ProfileService.Save(player, true) end
+    profiles[id] = Schema.Decode(output.data)
+    if player.Parent ~= Players or closing then
+        ProfileService.Save(player, true)
+    end
 end
 
 function ProfileService.IsLoaded(player: Player): boolean
-    return profiles[player.UserId] ~= nil
-end
-
--- Explicit mutation API. This call yields during DataStore save; no direct profile references escape.
-function ProfileService.Mutate(player: Player, edit: (any) -> boolean): boolean
-    local id = player.UserId
-    if closing or not profiles[id] or saving[id] then return false end
-    saving[id] = true
-    local original = profiles[id]
-    local candidate = Schema.Decode(original)
-    local edited, accepted = pcall(edit, candidate)
-    local valid = edited and accepted == true and candidate ~= nil and Schema.Decode(candidate) ~= nil
-    local saved = false
-    if valid then saved = persist(player, candidate, false) end
-    if saved then profiles[id] = candidate end
-    saving[id] = nil
-    return saved
+    return profiles[player.UserId] ~= nil and not closing
 end
 
 function ProfileService.Read(player: Player): any?
-    local p = profiles[player.UserId]
-    return if p then Schema.Decode(p) else nil
+    local data = profiles[player.UserId]
+    return if data then Schema.Decode(data) else nil
 end
 
+-- A failed/ambiguous write must not be re-applied to a stale cached profile.
+-- Run validation/operation-id checks inside the transform using the freshest value.
+function ProfileService.Mutate(player: Player, edit: (any) -> boolean): boolean
+    local id = player.UserId
+    if closing or player.Parent ~= Players or not profiles[id] or busy[id] then return false end
+    busy[id] = true
+    local ok, output = pcall(function()
+        return store:UpdateAsync(key(player), function(old)
+            if not owned(old) then return nil end
+            local candidate = Schema.Decode(old.data)
+            if not candidate then return nil end
+            local safe, accepted = pcall(edit, candidate)
+            if not safe or accepted ~= true or not Schema.Decode(candidate) then return nil end
+            return {owner = token, leaseUntil = os.time() + LEASE, data = candidate}
+        end)
+    end)
+    if ok and owned(output) and Schema.Decode(output.data) then
+        profiles[id] = Schema.Decode(output.data)
+    end
+    busy[id] = nil
+    if not ok then warn("[StreetCity] Profile mutation failed for user " .. tostring(id)) end
+    return ok and owned(output) and profiles[id] ~= nil
+end
+
+-- Renew/release only the most recently committed DataStore data; never overwrite
+-- it with a potentially stale memory snapshot after an uncertain network failure.
 function ProfileService.Save(player: Player, release: boolean): boolean
     local id = player.UserId
-    if saving[id] or not profiles[id] then return false end
-    saving[id] = true
-    local saved = persist(player, profiles[id], release)
-    if saved and release then profiles[id] = nil end
-    saving[id] = nil
-    return saved
+    if not profiles[id] or busy[id] then return false end
+    busy[id] = true
+    local ok, output = pcall(function()
+        return store:UpdateAsync(key(player), function(old)
+            if not owned(old) or not Schema.Decode(old.data) then return nil end
+            return {
+                owner = if release then nil else token,
+                leaseUntil = if release then 0 else os.time() + LEASE,
+                data = old.data,
+            }
+        end)
+    end)
+    local confirmed = ok and type(output) == "table"
+        and output.owner == (if release then nil else token)
+        and Schema.Decode(output.data) ~= nil
+    if confirmed then
+        profiles[id] = if release then nil else Schema.Decode(output.data)
+    end
+    busy[id] = nil
+    if not confirmed then warn("[StreetCity] Profile lease/save not confirmed for " .. tostring(id)) end
+    return confirmed
 end
 
 function ProfileService.Start()
     Players.PlayerAdded:Connect(function(player) task.spawn(acquire, player) end)
     Players.PlayerRemoving:Connect(function(player)
-        -- Pending mutation must complete before best-effort release.
-        local deadline = os.clock() + 8
-        while saving[player.UserId] and os.clock() < deadline do task.wait(0.1) end
+        local deadline = os.clock() + 10
+        while busy[player.UserId] and os.clock() < deadline do task.wait(0.1) end
         if profiles[player.UserId] then ProfileService.Save(player, true) end
     end)
     for _, player in Players:GetPlayers() do task.spawn(acquire, player) end
     task.spawn(function()
         while not closing do
-            task.wait(60)
+            task.wait(55)
             for _, player in Players:GetPlayers() do
-                if profiles[player.UserId] and not saving[player.UserId] then
+                if profiles[player.UserId] and not busy[player.UserId] then
                     if not ProfileService.Save(player, false) then
-                        -- Disable further mutations when lease renewal cannot be proven.
                         profiles[player.UserId] = nil
-                        player:Kick("Profile save unavailable. Reconnect later.")
+                        player:Kick("Profile storage lost. Reconnect later.")
                     end
                 end
             end
@@ -122,8 +134,8 @@ function ProfileService.Start()
     game:BindToClose(function()
         closing = true
         for _, player in Players:GetPlayers() do
-            local deadline = os.clock() + 8
-            while saving[player.UserId] and os.clock() < deadline do task.wait(0.1) end
+            local deadline = os.clock() + 10
+            while busy[player.UserId] and os.clock() < deadline do task.wait(0.1) end
             if profiles[player.UserId] then ProfileService.Save(player, true) end
         end
     end)
