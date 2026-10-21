@@ -35,7 +35,8 @@ function Contract.Validate()
     local crewOffices = requireChild(world, "CityCrews", "Folder")
     local nature = requireChild(world, "CityNature", "Folder")
     requireChild(world, "CityRealEstate", "Folder")
-    requireChild(world, "FactionRegistry", "Folder")
+    -- The application/approval-based CrewService is authoritative.
+    -- A second FactionRegistry would let teams diverge, so it is not required.
     assert(#propertyShops:GetChildren() >= 49,
         "[StreetCity Gate] Personal property markets incomplete")
     assert(#bankBranches:GetChildren() >= 9,
