@@ -4,6 +4,7 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ProfileService = require(script.Parent:WaitForChild("ProfileService"))
 local VehicleService = require(script.Parent:WaitForChild("VehicleService"))
+local VehicleFactory = require(script.Parent:WaitForChild("VehicleFactory"))
 local Rules = require(game:GetService("ReplicatedStorage").Shared:WaitForChild("GarageTransactions"))
 local ParkingLayout = require(game:GetService("ReplicatedStorage").Shared:WaitForChild("ParkingLayout"))
 local PersonalGarage = {}
@@ -45,6 +46,7 @@ local function spawnSelected(player: Player): boolean
         if existing.Seat.Occupant
             or existing.Chassis.AssemblyLinearVelocity.Magnitude > 2 then return false end
         local build = data.garage[data.selectedVehicleId]
+        VehicleFactory.ApplyCatalog(existing, build.catalogId)
         existing.Model:SetAttribute("EngineId", build.engineId)
         existing.Model:SetAttribute("GearboxId", build.gearboxId)
         existing.Model:SetAttribute("TireId", build.tireId)
