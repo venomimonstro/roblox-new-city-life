@@ -16,6 +16,7 @@ local LEASE = 180
 local profiles: {[number]: any} = {}
 local loading: {[number]: boolean} = {}
 local busy: {[number]: boolean} = {}
+local quarantined: {[number]: boolean} = {}
 local closing = false
 local sandbox = RunService:IsStudio() and game.GameId == 0
 
@@ -74,6 +75,7 @@ local function acquire(player: Player)
         return
     end
     profiles[id] = Schema.Decode(output.data)
+    quarantined[id] = nil
     emitSummary(player)
     if player.Parent ~= Players or closing then
         ProfileService.Save(player, true)
@@ -81,10 +83,11 @@ local function acquire(player: Player)
 end
 
 function ProfileService.IsLoaded(player: Player): boolean
-    return profiles[player.UserId] ~= nil and not closing
+    return profiles[player.UserId] ~= nil and not quarantined[player.UserId] and not closing
 end
 
 function ProfileService.Read(player: Player): any?
+    if quarantined[player.UserId] then return nil end
     local data = profiles[player.UserId]
     return if data then Schema.Decode(data) else nil
 end
@@ -93,7 +96,7 @@ end
 -- Run validation/operation-id checks inside the transform using the freshest value.
 function ProfileService.Mutate(player: Player, edit: (any) -> boolean): boolean
     local id = player.UserId
-    if closing or player.Parent ~= Players or not profiles[id] or busy[id] then return false end
+    if closing or player.Parent ~= Players or not profiles[id] or quarantined[id] or busy[id] then return false end
     busy[id] = true
     if sandbox then
         local candidate = Schema.Decode(profiles[id])
@@ -153,7 +156,9 @@ function ProfileService.Mutate(player: Player, edit: (any) -> boolean): boolean
     else
         -- Missing ownership proof, transform error or indeterminate write status.
         -- Do not allow further player mutations until a fresh session is loaded.
-        profiles[id] = nil
+        -- Preserve the last validated snapshot only so PlayerRemoving can
+        -- release our lease after the account has been quarantined.
+        quarantined[id] = true
         if player.Parent == Players then
             task.defer(function()
                 if player.Parent == Players then
@@ -208,6 +213,7 @@ function ProfileService.Save(player: Player, release: boolean): boolean
     end
     if confirmed then
         profiles[id] = if release then nil else confirmedData
+        if release then quarantined[id] = nil end
     end
     busy[id] = nil
     if not confirmed then warn("[StreetCity] Profile lease/save not confirmed for " .. tostring(id) .. ": " .. tostring(lastError)) end
@@ -231,6 +237,8 @@ function ProfileService.Start()
         local deadline = os.clock() + 10
         while busy[player.UserId] and os.clock() < deadline do task.wait(0.1) end
         if profiles[player.UserId] then ProfileService.Save(player, true) end
+        quarantined[player.UserId] = nil
+        profiles[player.UserId] = nil
     end)
     for _, player in Players:GetPlayers() do task.spawn(acquire, player) end
     task.spawn(function()
