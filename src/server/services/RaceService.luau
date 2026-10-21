@@ -12,10 +12,11 @@ local Rules = require(ReplicatedStorage.Shared:WaitForChild("GarageTransactions"
 local RaceService = {}
 local START = Vector3.new(0, 1, 23)
 local POINTS = {
-    Vector3.new(0, 1, -100),
-    Vector3.new(100, 1, -100),
-    Vector3.new(100, 1, 100),
     Vector3.new(0, 1, 100),
+    Vector3.new(200, 1, 100),
+    Vector3.new(200, 1, -100),
+    Vector3.new(200, 1, 0),
+    Vector3.new(0, 1, 0),
     START,
 }
 local RADIUS = 22
@@ -76,7 +77,7 @@ function RaceService.Start()
             car = car, checkpoint = 1, began = now, last = now,
             position = pos, checkpointAt = now, checkpointPosition = START,
         }
-        message(player, "Time trial started! Checkpoint 1/5")
+        message(player, "Time trial started! Checkpoint 1/" .. tostring(#POINTS))
     end)
     for index, position in POINTS do
         local marker = Instance.new("Part")
