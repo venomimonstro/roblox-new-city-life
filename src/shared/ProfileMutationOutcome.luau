@@ -12,11 +12,13 @@ function Outcome.Classify(
     expectedToken: string,
     dataValid: boolean
 ): string
-    if requestSucceeded and acceptedInTransform and dataValid
+    if requestSucceeded and acceptedInTransform and not rejectedByRule
+        and not invalidOrLost and dataValid
         and type(response) == "table" and response.owner == expectedToken then
         return "committed"
     end
-    if requestSucceeded and rejectedByRule and not invalidOrLost and response == nil then
+    if requestSucceeded and rejectedByRule and not acceptedInTransform
+        and not invalidOrLost and response == nil then
         return "rejected"
     end
     return "uncertain"
