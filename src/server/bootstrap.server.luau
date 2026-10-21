@@ -18,8 +18,8 @@ local success, err = pcall(function()
     local testCar = VehicleService.Start()
     if testCar then GarageService.Start(testCar) end
     PersonalGarage.Start()
-    RaceService.Start()
     GarageMarketplaceService.Start()
+    RaceService.Start()
     if RunService:IsStudio() then
         require(script.Parent:WaitForChild("dev"):WaitForChild("SmokeTests")).Run()
     end
