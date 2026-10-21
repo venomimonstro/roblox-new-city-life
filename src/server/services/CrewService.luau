@@ -148,6 +148,18 @@ function Crew.Start()
             then Color3.fromRGB(52, 115, 183) else Color3.fromRGB(174, 70, 110)
         pad(root, "Form_" .. typeId, point, "Form crew", color, function(player)
             if membership[player.UserId] then say(player, "Leave your current crew first") return end
+            local targetSide = if typeId == "federal" then "law" else "outlaw"
+            local snapshot = Profile.Read(player)
+            if not snapshot then return end
+            if snapshot.allegiance ~= targetSide then
+                local changed = Profile.Mutate(player, function(data)
+                    return Rules.SetAllegiance(data, targetSide, os.time())
+                end)
+                if not changed then
+                    say(player, "Faction change denied; wait 15 minutes or dismiss conflicting companions")
+                    return
+                end
+            end
             slots += 1
             local id = typeId .. "_" .. tostring(slots)
             groups[id] = {id=id, typeId=typeId, owner=player.UserId,
@@ -180,6 +192,18 @@ function Crew.Start()
                     local applicantId = table.remove(queue, 1)
                     local target = Players:GetPlayerByUserId(applicantId)
                     if target and not membership[applicantId] then
+                        local desired = if typeId == "federal" then "law" else "outlaw"
+                        local profile = Profile.Read(target)
+                        if not profile then continue end
+                        if profile.allegiance ~= desired then
+                            local changed = Profile.Mutate(target, function(data)
+                                return Rules.SetAllegiance(data, desired, os.time())
+                            end)
+                            if not changed then
+                                say(target, "Faction cooldown or companion conflict; cannot join")
+                                continue
+                            end
+                        end
                         table.insert(group.members, applicantId)
                         membership[applicantId] = groupId
                         say(target, "Accepted into " .. typeId .. " crew")
