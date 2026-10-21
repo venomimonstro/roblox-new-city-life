@@ -18,14 +18,21 @@ local function keyOk(value: any): boolean
         and string.match(value, "^[%w_%-]+$") ~= nil
 end
 
-function Schema.New()
+function Schema.New(userId: number?)
+    local starterChoices = {
+        "starter_american_sedan", "starter_american_pickup", "starter_american_muscle",
+    }
+    local starterId = "starter_hatch"
+    if type(userId) == "number" and userId >= 1 and userId % 1 == 0 then
+        starterId = starterChoices[(userId % #starterChoices) + 1]
+    end
     return {
         schemaVersion = 2,
         credits = 0,
         selectedVehicleId = "starter",
         garage = {
             starter = {
-                catalogId = "starter_hatch",
+                catalogId = starterId,
                 engineId = "stock_i4",
                 gearboxId = "street_5",
                 tireId = "street",
