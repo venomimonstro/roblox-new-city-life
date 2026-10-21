@@ -197,10 +197,10 @@ function SmokeTests.Run()
         assert(zone, "Missing district zone " .. district.id)
         for _, part in zone:GetChildren() do
             if part:IsA("BasePart") and string.sub(part.Name, 1, 9) == "Building_" then
-                local offsetX = part.Position.X - district.x
-                local offsetZ = part.Position.Z - district.z
-                local distX = math.abs(offsetX - math.round(offsetX / 100) * 100)
-                local distZ = math.abs(offsetZ - math.round(offsetZ / 100) * 100)
+                local distX = math.abs(part.Position.X
+                    - math.round(part.Position.X / 100) * 100)
+                local distZ = math.abs(part.Position.Z
+                    - math.round(part.Position.Z / 100) * 100)
                 assert(distX >= part.Size.X / 2 + 12.5,
                     "District building overlaps a vertical road: " .. district.id)
                 assert(distZ >= part.Size.Z / 2 + 12.5,
