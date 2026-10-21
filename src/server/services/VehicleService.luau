@@ -202,20 +202,22 @@ function VehicleService.Start()
     lightsRemote.Name = "ToggleHeadlights"
     lightsRemote.Parent = remoteFolder
 
-    -- Only unpublished Studio has a free shared test vehicle.
-    if not (RunService:IsStudio() and game.GameId == 0) then
-        return nil
+    -- A shared free test car exists only in an unpublished Studio session.
+    -- Remote handlers and server heartbeat are initialized in EVERY environment.
+    local car: Factory.Car? = nil
+    if RunService:IsStudio() and game.GameId == 0 then
+        local testCar = Factory.Create(folder, Vector3.new(0, 3.5, -30))
+        testCar.Model:SetAttribute("EngineId", "stock_i4")
+        testCar.Model:SetAttribute("GearboxId", "street_5")
+        testCar.Model:SetAttribute("TireId", "street")
+        table.insert(cars, testCar)
+        driveState[testCar.Model] = {gear = 1, rpm = 850, signature = "", spec = nil, lastTelemetry = 0}
+        ownershipConnections[testCar.Model] = testCar.Seat:GetPropertyChangedSignal("Occupant"):Connect(function()
+            assignOwner(testCar)
+        end)
+        assignOwner(testCar)
+        car = testCar
     end
-    local car = Factory.Create(folder, Vector3.new(0, 3.5, -30))
-    car.Model:SetAttribute("EngineId", "stock_i4")
-    car.Model:SetAttribute("GearboxId", "street_5")
-    car.Model:SetAttribute("TireId", "street")
-    table.insert(cars, car)
-    driveState[car.Model] = { gear = 1, rpm = 850, signature = "", spec = nil, lastTelemetry = 0 }
-    ownershipConnections[car.Model] = car.Seat:GetPropertyChangedSignal("Occupant"):Connect(function()
-        assignOwner(car)
-    end)
-    assignOwner(car)
 
     lightsRemote.OnServerEvent:Connect(function(player: Player)
         local now = os.clock()
