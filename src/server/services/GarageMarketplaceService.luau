@@ -8,6 +8,7 @@ local ProfileService = require(script.Parent:WaitForChild("ProfileService"))
 local PersonalGarage = require(script.Parent:WaitForChild("PersonalGarage"))
 local Rules = require(ReplicatedStorage.Shared:WaitForChild("GarageTransactions"))
 local Offers = require(ReplicatedStorage.Shared:WaitForChild("ShopCatalog"))
+local Vehicles = require(ReplicatedStorage.Shared:WaitForChild("VehicleCatalog"))
 local Shop = {}
 
 local lastAction: {[number]: number} = {}
@@ -82,14 +83,19 @@ function Shop.Start()
                 notify(player, if success then "Part purchased: " .. offerId else "Purchase denied / insufficient credits")
             end)
     end
-    station(world, "Buy Street Coupe: 12000 cr", Vector3.new(0, 0, -45), function(player)
-        local vehicleId = "car_" .. HttpService:GenerateGUID(false):gsub("-", "")
-        local operation = opId()
-        local success = ProfileService.Mutate(player, function(profile)
-            return Rules.PurchaseVehicle(profile, "street_coupe", vehicleId, operation)
-        end)
-        notify(player, if success then "Street Coupe added to garage" else "Car purchase denied")
-    end)
+    for index, catalogId in {"street_coupe", "sport_sedan"} do
+        local definition = Vehicles[catalogId]
+        station(world, "Buy " .. definition.name .. ": " .. tostring(definition.price) .. " cr",
+            Vector3.new(-10 + 20 * (index - 1), 0, -45), function(player)
+                local vehicleId = "car_" .. HttpService:GenerateGUID(false):gsub("-", "")
+                local operation = opId()
+                local success = ProfileService.Mutate(player, function(profile)
+                    return Rules.PurchaseVehicle(profile, catalogId, vehicleId, operation)
+                end)
+                notify(player, if success then definition.name .. " added to your garage"
+                    else "Car purchase denied; check balance or garage capacity")
+            end)
+    end
     -- Explicit installation stands avoid silently selecting a different purchased
     -- part when a player owns multiple SKUs. All validation stays on the server.
     for index, offerId in keys do
