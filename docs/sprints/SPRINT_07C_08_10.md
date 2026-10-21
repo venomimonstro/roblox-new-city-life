@@ -6,7 +6,7 @@ Status: committed to `main`, **source implementation only**. The Roblox Studio p
 - V2 player profile stores up to 8 cars, selected car ID, inventory and bounded recent operation journal.
 - Old V1 profiles are decoded to V2; future/unknown schemas and unknown catalog references are rejected, not overwritten.
 - Selected car spawns using its saved engine, transmission and tires, with separate active car instance and driver-only seat permissions.
-- One active personal car per account; server selection terminal switches to next car and despawns the previous one.
+- One active personal car per account; the selection terminal now reconfigures the same parked, unoccupied prototype chassis in place. Spawning replaces only a missing instance. Distinct vehicle meshes remain a future sprint.
 - Up to 12 fixed parking slots per Roblox server. Parking and obstruction still need real Studio playtesting.
 - The game keeps the free shared development car **only in an unpublished Studio session**.
 
