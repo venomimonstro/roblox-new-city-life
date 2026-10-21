@@ -63,6 +63,20 @@ def main() -> None:
     profile_source = (ROOT / "src/server/services/ProfileService.luau").read_text(encoding="utf-8")
     if "MutationOutcome.Classify(" not in profile_source or "activeStore()" not in profile_source:
         raise SystemExit("Profile safety regression: missing cancellation or lazy-store guard")
+    if "confirmedData = Schema.Decode(output.data)" not in profile_source:
+        raise SystemExit("Profile safety regression: lease retry must capture committed data")
+    if "quarantined[player.UserId] = true" not in profile_source:
+        raise SystemExit("Profile safety regression: failed renewals must quarantine accounts")
+    if "quarantined[id] = true" not in profile_source:
+        raise SystemExit("Profile safety regression: uncertain writes must quarantine accounts")
+
+    race = (ROOT / "src/server/services/RaceService.luau").read_text(encoding="utf-8")
+    if "settling[id] = true" not in race or "or settling[player.UserId]" not in race:
+        raise SystemExit("Race safety regression: block races during credit settlement")
+
+    vehicle = (ROOT / "src/server/services/VehicleService.luau").read_text(encoding="utf-8")
+    if "physicsAccumulator < 1 / 30" not in vehicle:
+        raise SystemExit("Vehicle performance regression: missing 30Hz server simulation cap")
 
     world_source = (ROOT / "src/server/services/WorldService.luau").read_text(encoding="utf-8")
     race_source = (ROOT / "src/server/services/RaceService.luau").read_text(encoding="utf-8")
