@@ -15,8 +15,12 @@ function Layout.Plot(slot: number): any?
         or slot < 0 or slot >= Layout.Capacity then return nil end
     local row = math.floor(slot / 24)
     local index = slot % 24
-    local side = if index % 2 == 0 then 1 else -1
-    local x = (math.floor(index / 2) + 1) * 18 * side
+    -- Avoid north-south roads at every x=100*n; each house/garage stays
+    -- in the middle of a 100-stud block with 10+ studs of road clearance.
+    local side = if index < 12 then 1 else -1
+    local within = index % 12
+    local x = (math.floor(within / 2) * 100
+        + (if within % 2 == 0 then 31 else 67)) * side
     local sign = if row == 0 then -1 else 1
     return {
         slot = slot,
