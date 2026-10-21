@@ -112,6 +112,8 @@ function VehicleFactory.Create(parent: Instance, position: Vector3): Car
         if player:DistanceFromCharacter(seat.Position) > 12 then
             return
         end
+        local ownerId = model:GetAttribute("OwnerUserId")
+        if ownerId ~= nil and ownerId ~= player.UserId then return end
         seat:Sit(humanoid)
     end)
 
