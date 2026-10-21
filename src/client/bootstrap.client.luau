@@ -47,6 +47,28 @@ hint.Font = Enum.Font.Gotham
 hint.Parent = panel
 
 local remotes = ReplicatedStorage:WaitForChild("StreetCityRemotes")
+local wallet = Instance.new("TextLabel")
+wallet.Name = "PlayerSummary"
+wallet.Position = UDim2.fromOffset(14, 18)
+wallet.Size = UDim2.new(0.75, 0, 0, 28)
+wallet.BackgroundTransparency = 1
+wallet.TextXAlignment = Enum.TextXAlignment.Left
+wallet.Font = Enum.Font.GothamSemibold
+wallet.TextSize = 15
+wallet.TextColor3 = Color3.fromRGB(240, 240, 240)
+wallet.Text = "Street City Online"
+wallet.Parent = gui
+
+task.spawn(function()
+    local remote = ReplicatedStorage:WaitForChild("StreetCityProfileState", 8)
+    if not remote or not remote:IsA("RemoteEvent") then return end
+    remote.OnClientEvent:Connect(function(credits: any, cars: any, selected: any)
+        if type(credits) ~= "number" or type(cars) ~= "number" or type(selected) ~= "string" then return end
+        wallet.Text = string.format("Credits: %d  |  Cars: %d  |  %s", credits, cars, string.sub(selected, 1, 24))
+    end)
+    remote:FireServer()
+end)
+
 local lightsRemote = remotes:WaitForChild("ToggleHeadlights") :: RemoteEvent
 local messageRemote = remotes:WaitForChild("GarageNotice") :: RemoteEvent
 
