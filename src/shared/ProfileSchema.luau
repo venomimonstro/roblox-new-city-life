@@ -72,8 +72,17 @@ function Schema.Decode(raw: any)
                 or not finiteInteger(qty, 1, 99) then return nil end
             inventory[itemId] = qty
         end
+        -- Reject sparse arrays / dictionary fields instead of silently deleting data.
+        local opSize = #raw.recentOperations
+        local opCount = 0
+        for index in pairs(raw.recentOperations) do
+            opCount += 1
+            if type(index) ~= "number" or index % 1 ~= 0
+                or index < 1 or index > opSize then return nil end
+        end
+        if opCount ~= opSize then return nil end
         local seen = {}
-        if #raw.recentOperations > MAX_OPERATIONS then return nil end
+        if opSize > MAX_OPERATIONS then return nil end
         for _, opId in ipairs(raw.recentOperations) do
             if #operations >= MAX_OPERATIONS or not keyOk(opId) or seen[opId] then return nil end
             seen[opId] = true
