@@ -247,8 +247,12 @@ function ProfileService.Start()
             for _, player in Players:GetPlayers() do
                 if profiles[player.UserId] and not busy[player.UserId] then
                     if not ProfileService.Save(player, false) then
-                        profiles[player.UserId] = nil
-                        player:Kick("Profile storage lost. Reconnect later.")
+                        -- Retain a quarantined snapshot for a best-effort
+                        -- PlayerRemoving release; never permit more writes.
+                        quarantined[player.UserId] = true
+                        if player.Parent == Players then
+                            player:Kick("Profile storage unavailable. Reconnect later.")
+                        end
                     end
                 end
             end
