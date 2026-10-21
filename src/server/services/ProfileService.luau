@@ -225,6 +225,15 @@ function ProfileService.Save(player: Player, release: boolean): boolean
         if release then quarantined[id] = nil end
     end
     busy[id] = nil
+    if not release and player.Parent ~= Players then
+        -- PlayerRemoving may finish its wait before a slow lease renewal.
+        -- Free the late lease using a fresh UpdateAsync read, not a cached write.
+        if profiles[id] then
+            ProfileService.Save(player, true)
+        end
+        profiles[id] = nil
+        quarantined[id] = nil
+    end
     if not confirmed then warn("[StreetCity] Profile lease/save not confirmed for " .. tostring(id) .. ": " .. tostring(lastError)) end
     return confirmed
 end
