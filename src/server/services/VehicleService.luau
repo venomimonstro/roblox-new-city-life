@@ -13,7 +13,7 @@ local cars: { Factory.Car } = {}
 local cooldown: { [number]: number } = {}
 local inputThrottle: { [number]: number } = {}
 local inputState: { [Model]: { throttle: number, steer: number, last: number } } = {}
-local ownershipConnections: { RBXScriptConnection } = {}
+local ownershipConnections: { [Model]: RBXScriptConnection } = {}
 local driveState: { [Model]: { gear: number, rpm: number, signature: string, spec: any?, lastTelemetry: number } } = {}
 
 local function isDriver(player: Player, car: Factory.Car): boolean
@@ -148,14 +148,17 @@ function VehicleService.SpawnForPlayer(player: Player, build: any, position: Vec
     car.Model:SetAttribute("TireId", build.tireId)
     table.insert(cars, car)
     driveState[car.Model] = { gear = 1, rpm = 850, signature = "", spec = nil, lastTelemetry = 0 }
-    table.insert(ownershipConnections, car.Seat:GetPropertyChangedSignal("Occupant"):Connect(function()
+    ownershipConnections[car.Model] = car.Seat:GetPropertyChangedSignal("Occupant"):Connect(function()
         assignOwner(car)
-    end))
+    end)
     assignOwner(car)
     return car
 end
 
 function VehicleService.Despawn(car: Factory.Car)
+    local connection = ownershipConnections[car.Model]
+    if connection then connection:Disconnect() end
+    ownershipConnections[car.Model] = nil
     for i, entry in cars do
         if entry == car then table.remove(cars, i) break end
     end
@@ -209,9 +212,9 @@ function VehicleService.Start()
     car.Model:SetAttribute("TireId", "street")
     table.insert(cars, car)
     driveState[car.Model] = { gear = 1, rpm = 850, signature = "", spec = nil, lastTelemetry = 0 }
-    table.insert(ownershipConnections, car.Seat:GetPropertyChangedSignal("Occupant"):Connect(function()
+    ownershipConnections[car.Model] = car.Seat:GetPropertyChangedSignal("Occupant"):Connect(function()
         assignOwner(car)
-    end))
+    end)
     assignOwner(car)
 
     lightsRemote.OnServerEvent:Connect(function(player: Player)
