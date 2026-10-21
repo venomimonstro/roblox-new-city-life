@@ -6,6 +6,7 @@ export type Car = {
     Chassis: Part,
     Seat: VehicleSeat,
     DriveForce: VectorForce,
+    SuspensionForce: VectorForce,
     YawMotor: AngularVelocity,
     Headlights: { SpotLight },
 }
@@ -128,6 +129,14 @@ function VehicleFactory.Create(parent: Instance, position: Vector3): Car
     driveForce.Force = Vector3.zero
     driveForce.Parent = chassis
 
+    local suspension = Instance.new("VectorForce")
+    suspension.Name = "SuspensionForce"
+    suspension.ApplyAtCenterOfMass = true
+    suspension.RelativeTo = Enum.ActuatorRelativeTo.World
+    suspension.Attachment0 = attachment
+    suspension.Force = Vector3.zero
+    suspension.Parent = chassis
+
     local yaw = Instance.new("AngularVelocity")
     yaw.Name = "YawMotor"
     yaw.Attachment0 = attachment
@@ -143,6 +152,7 @@ function VehicleFactory.Create(parent: Instance, position: Vector3): Car
         Chassis = chassis,
         Seat = seat,
         DriveForce = driveForce,
+        SuspensionForce = suspension,
         YawMotor = yaw,
         Headlights = lights,
     }
