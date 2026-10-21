@@ -170,14 +170,6 @@ function Rules.Workout(profile: any, gain: number, operationId: string): boolean
     return true
 end
 
-function Rules.SpendCredits(profile: any, amount: number, operationId: string): boolean
-    if type(amount) ~= "number" or amount % 1 ~= 0
-        or amount < 1 or amount > 2000 or profile.credits < amount then return false end
-    if not record(profile, operationId) then return false end
-    profile.credits -= amount
-    return true
-end
-
 -- These assets are PER-PLAYER deeds, not ownership of globally unique land.
 local DEED_BASE = {home = 6500, rental = 12000, shop = 26000}
 
