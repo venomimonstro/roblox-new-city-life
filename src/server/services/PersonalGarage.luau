@@ -198,9 +198,19 @@ local function createCarLocator()
         if not car or not car.Model.Parent
             or car.Model:GetAttribute("OwnerUserId") ~= id then return end
         if car.Seat.Occupant or car.Chassis.AssemblyLinearVelocity.Magnitude > 3 then return end
-        -- Only this server-selected owned car position can be used as a destination.
-        local destination = car.Chassis.Position + Vector3.new(0, 3.5, 8)
-        character:PivotTo(CFrame.new(destination))
+        -- A fixed offset from the server-owned chassis cannot be trusted as
+        -- safe floor: the car may have fallen from the road or parked on a ledge.
+        local intended = car.Chassis.Position + Vector3.new(0, 0, 8)
+        local ray = RaycastParams.new()
+        ray.FilterType = Enum.RaycastFilterType.Exclude
+        ray.FilterDescendantsInstances = {car.Model, character}
+        ray.IgnoreWater = true
+        local ground = workspace:Raycast(intended + Vector3.new(0, 12, 0),
+            Vector3.new(0, -55, 0), ray)
+        if not ground or not ground.Instance.CanCollide
+            or ground.Normal.Y < 0.72 then return end
+        local landing = ground.Position + Vector3.new(0, 3.5, 0)
+        character:PivotTo(CFrame.new(landing))
     end)
 end
 
