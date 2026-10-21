@@ -6,6 +6,7 @@ local Catalog = require(Shared:WaitForChild("PartsCatalog"))
 local RoadGraph = require(Shared:WaitForChild("RoadGraph"))
 local VehicleBuild = require(Shared:WaitForChild("VehicleBuild"))
 local Districts = require(Shared:WaitForChild("DistrictConfig"))
+local ProfileSchema = require(Shared:WaitForChild("ProfileSchema"))
 
 local SmokeTests = {}
 function SmokeTests.Run()
@@ -42,6 +43,16 @@ function SmokeTests.Run()
     assert(VehicleBuild.Resolve({engineId = "unknown", gearboxId = "street_5", tireId = "street"}) == nil)
     assert(VehicleBuild.Resolve({engineId = "stock_i4", gearboxId = "street_5", tireId = "street", finalDrive = 0}) == nil)
     assert(VehicleBuild.Resolve({engineId = "stock_i4", gearboxId = "street_5", tireId = "street", finalDrive = 4.2}) ~= nil)
-    print("[StreetCity] PASS: baseline, district and tuning smoke assertions")
+    local fresh = ProfileSchema.New()
+    assert(fresh.schemaVersion == 1 and fresh.garage.starter ~= nil)
+    local decoded = ProfileSchema.Decode(fresh)
+    assert(decoded and decoded.credits == 0)
+    fresh.credits = -1
+    assert(ProfileSchema.Decode(fresh) == nil)
+    local invalid = ProfileSchema.New()
+    invalid.garage.starter.engineId = "invalid"
+    assert(ProfileSchema.Decode(invalid) == nil)
+    assert(ProfileSchema.Decode({schemaVersion = 999, credits = 0, garage = {}}) == nil)
+    print("[StreetCity] PASS: baseline, district, tuning and profile schema smoke assertions")
 end
 return SmokeTests
