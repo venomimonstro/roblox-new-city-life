@@ -27,6 +27,7 @@ REQUIRED = (
     "src/shared/RaceValidation.luau",
     "src/shared/RaceCourse.luau",
     "src/server/dev/ScenarioTests.luau",
+    "src/server/dev/SimulationTests.luau",
     "src/server/services/PersonalGarage.luau",
     "src/server/services/GarageMarketplaceService.luau",
     "src/server/services/RaceService.luau",
@@ -98,6 +99,17 @@ def main() -> None:
     race = (ROOT / "src/server/services/RaceService.luau").read_text(encoding="utf-8")
     if 'WaitForChild("RaceCourse")' not in race or "CheckpointRadius = 16" not in course:
         raise SystemExit("Race must use shared validated checkpoint geometry")
+
+    if 'WaitForChild("SimulationTests")).Run()' not in bootstrap:
+        raise SystemExit("Missing Studio fake-DataStore simulation startup")
+
+    dev_garage = (ROOT / "src/server/services/GarageService.luau").read_text(encoding="utf-8")
+    if "ProfileService.Mutate" in dev_garage:
+        raise SystemExit("Unpublished shared test car cannot modify saved player garage")
+
+    factory = (ROOT / "src/server/services/VehicleFactory.luau").read_text(encoding="utf-8")
+    if "heading or 0" not in factory or "math.pi / 2" not in vehicle:
+        raise SystemExit("Personal vehicles must face along parking road")
 
     workflows = ROOT / ".github" / "workflows"
     if workflows.exists() and any(workflows.iterdir()):
