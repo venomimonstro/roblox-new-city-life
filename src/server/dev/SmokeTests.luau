@@ -88,6 +88,12 @@ function SmokeTests.Run()
     local badInventory = ProfileSchema.New()
     badInventory.inventory.unknown_sku = 1
     assert(ProfileSchema.Decode(badInventory) == nil)
+    local badJournal = ProfileSchema.New()
+    badJournal.recentOperations[3] = "sparse_test_0001"
+    assert(ProfileSchema.Decode(badJournal) == nil, "Reject sparse operation journal")
+    local mapJournal = ProfileSchema.New()
+    mapJournal.recentOperations.bad = "invalid_journal"
+    assert(ProfileSchema.Decode(mapJournal) == nil, "Reject operation dictionary")
     assert(RaceValidation.PositionPlausible(Vector3.zero, Vector3.new(0, 0, 90), 1, 100))
     assert(not RaceValidation.PositionPlausible(Vector3.zero, Vector3.new(0, 0, 500), 1, 100))
     assert(RaceValidation.CheckpointReached(Vector3.new(4, 0, 0), Vector3.zero, 5))
