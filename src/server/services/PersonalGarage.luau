@@ -67,23 +67,20 @@ local function spawnSelected(player: Player): boolean
 end
 
 function PersonalGarage.ReturnOnRespawn(player: Player)
+    if player.Parent ~= Players or not ProfileService.IsLoaded(player) then return end
     local id = player.UserId
-    local car = active[id]
-    if car and car.Model.Parent then
-        local occupant = car.Seat.Occupant
-        local seatedPlayer = occupant and game:GetService("Players"):GetPlayerFromCharacter(occupant.Parent)
-        if occupant and seatedPlayer ~= player then return end
+    local old = active[id]
+    if old and old.Model.Parent then
+        -- On respawn the previously controlled chassis might still be occupied
+        -- or sliding away. Always delete this *single* owned instance first.
+        local occupant = old.Seat.Occupant
+        local driver = occupant and Players:GetPlayerFromCharacter(occupant.Parent)
+        if occupant and driver and driver ~= player then return end
         if occupant then occupant.Sit = false end
-        car.Chassis.AssemblyLinearVelocity = Vector3.zero
-        car.Chassis.AssemblyAngularVelocity = Vector3.zero
-        -- On death we intentionally recall an abandoned owned car, even if it
-        -- would otherwise still be moving elsewhere in the world.
+        VehicleService.Despawn(old)
     end
-    if not car or not car.Model.Parent then
-        PersonalGarage.Refresh(player)
-    else
-        PersonalGarage.Recall(player)
-    end
+    active[id] = nil
+    PersonalGarage.Refresh(player)
 end
 
 -- Server-side recovery for cars that fell through the map or were left far
