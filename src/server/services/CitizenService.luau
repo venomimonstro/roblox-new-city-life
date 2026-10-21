@@ -11,6 +11,8 @@ local ProfileService = require(script.Parent:WaitForChild("ProfileService"))
 local Wanted = require(script.Parent:WaitForChild("WantedService"))
 local Society = require(script.Parent:WaitForChild("DistrictSocietyService"))
 local Dynamics = require(ReplicatedStorage.Shared:WaitForChild("DistrictDynamics"))
+local Society = require(script.Parent:WaitForChild("DistrictSocietyService"))
+local Dynamics = require(ReplicatedStorage.Shared:WaitForChild("DistrictDynamics"))
 local Citizens = {}
 local actors: {any} = {}
 local PALETTE = {
@@ -70,6 +72,7 @@ local function createCitizen(parent: Instance, district: any, index: number, dis
 
     local actor = {
         model = npc, torso = torso, home = root, index = index,
+        district = district.id, visible = true,
         angle = (index + districtIndex) * 1.7, nextChange = 0,
         pausedUntil = 0, lastRobbed = 0, lastHit = 0,
         districtId = district.id, active = true,
@@ -193,6 +196,28 @@ function Citizens.HitNearest(player: Player, range: number): boolean
     return true
 end
 
+local function updatePopulation(districtId: string, state: any)
+    local allowed = Dynamics.ResidentCount(state)
+    for _, actor in actors do
+        if actor.district == districtId then
+            local visible = actor.index <= allowed
+            if actor.visible ~= visible then
+                actor.visible = visible
+                for _, descendant in actor.model:GetDescendants() do
+                    if descendant:IsA("BasePart") then
+                        if descendant.Name ~= "Root" then
+                            descendant.Transparency = if visible then 0 else 1
+                        end
+                        descendant.CanTouch = visible and descendant.Name == "Torso"
+                    elseif descendant:IsA("ProximityPrompt") then
+                        descendant.Enabled = visible
+                    end
+                end
+            end
+        end
+    end
+end
+
 function Citizens.Start()
     local world = workspace:WaitForChild("StreetCityPrototypeWorld")
     local root = Instance.new("Folder")
@@ -207,6 +232,11 @@ function Citizens.Start()
     Society.Changed():Connect(function(districtId: string)
         adjustPopulation(districtId)
     end)
+    Society.Changed():Connect(updatePopulation)
+    for _, district in Districts do
+        local state = Society.GetState(district.id)
+        if state then updatePopulation(district.id, state) end
+    end
     local accumulator = 0
     RunService.Heartbeat:Connect(function(dt)
         accumulator += dt
