@@ -164,6 +164,10 @@ function VehicleService.Start()
     lightsRemote.Name = "ToggleHeadlights"
     lightsRemote.Parent = remoteFolder
 
+    -- Only unpublished Studio has a free shared test vehicle.
+    if not (RunService:IsStudio() and game.GameId == 0) then
+        return nil
+    end
     local car = Factory.Create(folder, Vector3.new(0, 3.5, -30))
     car.Model:SetAttribute("EngineId", "stock_i4")
     car.Model:SetAttribute("GearboxId", "street_5")
