@@ -66,6 +66,37 @@ local function spawnSelected(player: Player): boolean
     return true
 end
 
+-- Server-side recovery for cars that fell through the map or were left far
+-- from the onboarding area. It never recalls a car with a seated occupant.
+function PersonalGarage.Recall(player: Player): boolean
+    if not ProfileService.IsLoaded(player) then return false end
+    local id = player.UserId
+    local car = active[id]
+    if not car or not car.Model.Parent then return PersonalGarage.Refresh(player) end
+    if car.Model:GetAttribute("OwnerUserId") ~= id or car.Seat.Occupant then return false end
+    local lostBelowWorld = car.Chassis.Position.Y < -10
+    if not lostBelowWorld and car.Chassis.AssemblyLinearVelocity.Magnitude > 3 then
+        return false
+    end
+    local slot = reserveSlot(id)
+    local pos = slot and ParkingLayout.Position(slot)
+    if not pos then return false end
+    local ray = RaycastParams.new()
+    ray.FilterType = Enum.RaycastFilterType.Exclude
+    ray.FilterDescendantsInstances = {car.Model}
+    ray.IgnoreWater = true
+    local ground = workspace:Raycast(pos + Vector3.new(0, 15, 0), Vector3.new(0, -45, 0), ray)
+    if not ground or not ground.Instance.CanCollide or ground.Normal.Y < 0.72 then
+        return false
+    end
+    local parked = ground.Position + Vector3.new(0, 4.2, 0)
+    car.Model:PivotTo(CFrame.new(parked) * CFrame.Angles(0, math.pi / 2, 0))
+    car.Chassis.AssemblyLinearVelocity = Vector3.zero
+    car.Chassis.AssemblyAngularVelocity = Vector3.zero
+    PersonalGarage.EnsureSynced(player)
+    return true
+end
+
 function PersonalGarage.GetActive(player: Player): any?
     return active[player.UserId]
 end
@@ -193,8 +224,8 @@ local function createCarLocator()
         if not ProfileService.IsLoaded(player) then return end
         locateCooldown[id] = now
         local car = active[id]
-        if not car or not car.Model.Parent then
-            if not PersonalGarage.Refresh(player) then return end
+        if not car or not car.Model.Parent or car.Chassis.Position.Y < -10 then
+            if not PersonalGarage.Recall(player) then return end
             car = active[id]
         end
         if not car or not car.Model.Parent
