@@ -62,8 +62,9 @@ function Shop.Start()
         local item = Offers[offerId]
         station(world, offerId .. " " .. tostring(item.price) .. " cr",
             Vector3.new(-20 + (index - 1) * 10, 0, -65), function(player)
+                local operation = opId()
                 local success = ProfileService.Mutate(player, function(profile)
-                    return Rules.PurchasePart(profile, offerId, opId())
+                    return Rules.PurchasePart(profile, offerId, operation)
                 end)
                 notify(player, if success then "Part purchased: " .. offerId else "Purchase denied / insufficient credits")
             end)
