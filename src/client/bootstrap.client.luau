@@ -46,7 +46,39 @@ hint.Text = "WASD / arrows  |  L - headlights"
 hint.Font = Enum.Font.Gotham
 hint.Parent = panel
 
-local lightsRemote = ReplicatedStorage:WaitForChild("StreetCityRemotes"):WaitForChild("ToggleHeadlights") :: RemoteEvent
+local remotes = ReplicatedStorage:WaitForChild("StreetCityRemotes")
+local lightsRemote = remotes:WaitForChild("ToggleHeadlights") :: RemoteEvent
+local messageRemote = remotes:WaitForChild("GarageNotice") :: RemoteEvent
+
+local toast = Instance.new("TextLabel")
+toast.Name = "StatusToast"
+toast.AnchorPoint = Vector2.new(0.5, 0)
+toast.Position = UDim2.fromScale(0.5, 0.11)
+toast.Size = UDim2.new(0.85, 0, 0, 46)
+toast.BackgroundColor3 = Color3.fromRGB(18, 25, 35)
+toast.BackgroundTransparency = 0.14
+toast.TextColor3 = Color3.fromRGB(249, 249, 249)
+toast.TextScaled = false
+toast.TextSize = 17
+toast.TextWrapped = true
+toast.Font = Enum.Font.GothamMedium
+toast.Visible = false
+toast.Parent = gui
+local toastCorner = Instance.new("UICorner")
+toastCorner.CornerRadius = UDim.new(0, 10)
+toastCorner.Parent = toast
+
+local notificationId = 0
+messageRemote.OnClientEvent:Connect(function(value: any)
+    if type(value) ~= "string" then return end
+    notificationId += 1
+    local current = notificationId
+    toast.Text = string.sub(value, 1, 120)
+    toast.Visible = true
+    task.delay(4, function()
+        if notificationId == current then toast.Visible = false end
+    end)
+end)
 
 local function currentSeat(): VehicleSeat?
     local char = player.Character
