@@ -20,6 +20,7 @@ local REWARD = Course.RewardCredits
 local states: {[number]: any} = {}
 local cooldown: {[number]: number} = {}
 local settling: {[number]: boolean} = {}
+local startArmed: {[number]: boolean} = {}
 local notice: RemoteEvent
 
 local function message(player: Player, value: string)
@@ -57,25 +58,25 @@ function RaceService.Start()
     prompt.MaxActivationDistance = 18
     prompt.RequiresLineOfSight = false
     prompt.Parent = start
-    prompt.Triggered:Connect(function(player: Player)
-        if states[player.UserId] or settling[player.UserId] then return end
+    local function tryStart(player: Player)
+        local id = player.UserId
+        if states[id] or settling[id] or startArmed[id] == false then return end
         local now = os.clock()
-        if (cooldown[player.UserId] or 0) > now then return end
+        if (cooldown[id] or 0) > now then return end
         if not ProfileService.IsLoaded(player) then return end
         local car = PersonalGarage.GetActive(player)
-        if not seatedInOwnedCar(player, car) then
-            message(player, "Enter your own car to race")
-            return
-        end
+        if not seatedInOwnedCar(player, car) then return end
+        if (car.Chassis.Position - START).Magnitude > Course.StartRadius then return end
+        startArmed[id] = false -- re-arm only after driving away from the start ring
+        cooldown[id] = now + 15
         local pos = car.Chassis.Position
-        if (pos - START).Magnitude > Course.StartRadius then return end
-        cooldown[player.UserId] = now + 15
-        states[player.UserId] = {
+        states[id] = {
             car = car, checkpoint = 1, began = now, last = now,
             position = pos, checkpointAt = now, checkpointPosition = START,
         }
-        message(player, "Time trial started! Checkpoint 1/" .. tostring(#POINTS))
-    end)
+        message(player, "Race started! Follow yellow checkpoints 1/" .. tostring(#POINTS))
+    end
+    prompt.Triggered:Connect(tryStart)
     for index, position in POINTS do
         local marker = Instance.new("Part")
         marker.Name = "CircuitCheckpoint_" .. index
@@ -114,6 +115,20 @@ function RaceService.Start()
         if accumulator < 0.1 then return end
         accumulator = 0
         local now = os.clock()
+        -- A moving driver crosses the race start without needing to press a
+        -- proximity key while steering (also solves touch-only controls).
+        for _, player in Players:GetPlayers() do
+            local car = PersonalGarage.GetActive(player)
+            if car and car.Model.Parent and car.Chassis then
+                local distance = (car.Chassis.Position - START).Magnitude
+                if distance > Course.StartRadius + 18 then
+                    startArmed[player.UserId] = true
+                elseif distance < Course.StartRadius - 4
+                    and car.Chassis.AssemblyLinearVelocity.Magnitude > 3 then
+                    tryStart(player)
+                end
+            end
+        end
         for id, run in pairs(states) do
             local player = Players:GetPlayerByUserId(id)
             if not player then
@@ -174,6 +189,7 @@ function RaceService.Start()
         states[player.UserId] = nil
         cooldown[player.UserId] = nil
         settling[player.UserId] = nil
+        startArmed[player.UserId] = nil
     end)
 end
 return RaceService
