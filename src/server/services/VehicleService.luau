@@ -12,7 +12,7 @@ local VehicleService = {}
 local cars: { Factory.Car } = {}
 local cooldown: { [number]: number } = {}
 local ownershipConnections: { RBXScriptConnection } = {}
-local driveState: { [Model]: { gear: number, rpm: number } } = {}
+local driveState: { [Model]: { gear: number, rpm: number, signature: string } } = {}
 
 local function isDriver(player: Player, car: Factory.Car): boolean
     local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
@@ -68,8 +68,14 @@ local function updateCar(car: Factory.Car)
     end
     local state = driveState[car.Model]
     if not state then
-        state = { gear = 1, rpm = spec.idleRpm }
+        state = { gear = 1, rpm = spec.idleRpm, signature = "" }
         driveState[car.Model] = state
+    end
+    local signature = tostring(engineId) .. ":" .. tostring(gearboxId) .. ":" .. tostring(tireId)
+    if state.signature ~= signature then
+        state.gear = 1
+        state.rpm = spec.idleRpm
+        state.signature = signature
     end
     local speedMps = longitudinal * 0.28
     state.rpm = Powertrain.EngineRpm(spec, state.gear, speedMps)
@@ -135,7 +141,7 @@ function VehicleService.Start()
     car.Model:SetAttribute("GearboxId", "street_5")
     car.Model:SetAttribute("TireId", "street")
     table.insert(cars, car)
-    driveState[car.Model] = { gear = 1, rpm = 850 }
+    driveState[car.Model] = { gear = 1, rpm = 850, signature = "" }
     table.insert(ownershipConnections, car.Seat:GetPropertyChangedSignal("Occupant"):Connect(function()
         assignOwner(car)
     end))
@@ -170,6 +176,7 @@ function VehicleService.Start()
             end
         end
     end)
+    return car
 end
 
 return VehicleService
