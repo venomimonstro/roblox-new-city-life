@@ -27,8 +27,8 @@ function Territory.Start()
     root.Name = "TerritoryControl"
     root.Parent = world
     for _, district in Districts do
-        local pos = Vector3.new(math.floor(district.x / 100) * 100 + 65, 1.5,
-            math.floor(district.z / 100) * 100 + 65)
+        local pos = Vector3.new(math.floor(district.x / 100) * 100 + 80, 1.5,
+            math.floor(district.z / 100) * 100 + 80)
         local p = Instance.new("Part")
         p.Name = "Territory_" .. district.id
         p.Anchored = true
