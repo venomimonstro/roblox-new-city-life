@@ -22,6 +22,7 @@ REQUIRED = (
     "src/shared/ShopCatalog.luau",
     "src/shared/ProfileSchema.luau",
     "src/shared/ProfileMutationOutcome.luau",
+    "src/shared/ParkingLayout.luau",
     "src/shared/GarageTransactions.luau",
     "src/shared/RaceValidation.luau",
     "src/server/services/PersonalGarage.luau",
