@@ -20,6 +20,13 @@ function Contract.Validate()
     requireChild(world, "Roads", "Folder")
     requireChild(world, "PlayerSpawn", "SpawnLocation")
     requireChild(world, "DistrictBlockouts", "Folder")
+    local residential = requireChild(world, "ResidentialHomes", "Folder")
+    assert(#residential:GetChildren() == 48,
+        "[StreetCity Gate] Exactly 48 physical home and garage plots expected")
+    for _, home in residential:GetChildren() do
+        local terminal = requireChild(home, "GarageTerminal", "BasePart")
+        requireChild(terminal, "GaragePrompt", "ProximityPrompt")
+    end
     requireChild(world, "PersonalGarageTerminal", "BasePart")
     local locator = requireChild(world, "FindMyCarTerminal", "BasePart")
     requireChild(locator, "ProximityPrompt", "ProximityPrompt")
