@@ -16,7 +16,7 @@ local POINTS = {
     Vector3.new(0, 1, 100),
     Vector3.new(200, 1, 100),
     Vector3.new(200, 1, -100),
-    Vector3.new(200, 1, 0),
+    Vector3.new(0, 1, -100),
     Vector3.new(0, 1, 0),
     START,
 }
