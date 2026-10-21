@@ -57,6 +57,7 @@ local success, err = pcall(function()
         require(script.Parent:WaitForChild("dev"):WaitForChild("ScenarioTests")).Run()
         require(script.Parent:WaitForChild("dev"):WaitForChild("SimulationTests")).Run()
         require(script.Parent:WaitForChild("dev"):WaitForChild("CityLifeTests")).Run()
+        require(script.Parent:WaitForChild("dev"):WaitForChild("DistrictEconomyTests")).Run()
         require(script.Parent:WaitForChild("dev"):WaitForChild("SocialSystemsTests")).Run()
     end
 end)
