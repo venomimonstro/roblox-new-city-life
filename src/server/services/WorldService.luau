@@ -42,15 +42,35 @@ function WorldService.Start()
     local grass = Color3.fromRGB(72, 130, 75)
     local road = Color3.fromRGB(49, 52, 60)
 
+    -- Seamless 3.6 km-stud terrain collision grid. Chunked FillBlock avoids
+    -- oversized Parts and prevents falling into voids between far districts.
+    local terrain = workspace.Terrain
+    local chunk = 256
+    local extent = 1792
+    for x = -extent + chunk / 2, extent - chunk / 2, chunk do
+        for z = -extent + chunk / 2, extent - chunk / 2, chunk do
+            terrain:FillBlock(CFrame.new(x, -5, z),
+                Vector3.new(chunk, 8, chunk), Enum.Material.Grass)
+        end
+    end
     part(root, "Ground", Vector3.new(850, 2, 850), Vector3.new(0, -2, 0), grass, Enum.Material.Grass)
     local roadFolder = Instance.new("Folder")
     roadFolder.Name = "Roads"
     roadFolder.Parent = root
-
-    for i = -2, 2 do
+    -- Connected asphalt across all seven district approaches. Road segment
+    -- lengths remain under Roblox BasePart limits; 40-stud overlaps remove gaps.
+    for i = -17, 17 do
         local n = i * Config.World.RoadSpacing
-        part(roadFolder, "NorthSouth_" .. tostring(i), Vector3.new(Config.World.RoadWidth, 0.35, 575), Vector3.new(n, -0.77, 0), road, Enum.Material.Asphalt)
-        part(roadFolder, "EastWest_" .. tostring(i), Vector3.new(575, 0.36, Config.World.RoadWidth), Vector3.new(0, -0.76, n), road, Enum.Material.Asphalt)
+        for section = -2, 1 do
+            local center = (section + 0.5) * 900
+            local laneLength = 940
+            part(roadFolder, "NorthSouth_" .. i .. "_" .. section,
+                Vector3.new(Config.World.RoadWidth, 0.35, laneLength),
+                Vector3.new(n, -0.77, center), road, Enum.Material.Asphalt)
+            part(roadFolder, "EastWest_" .. i .. "_" .. section,
+                Vector3.new(laneLength, 0.35, Config.World.RoadWidth),
+                Vector3.new(center, -0.76, n), road, Enum.Material.Asphalt)
+        end
     end
 
     -- DistrictService is the sole authority for all district buildings,
@@ -68,6 +88,8 @@ function WorldService.Start()
             Vector3.new(-355 + (i - 1) * 130, 5, -340),
             Color3.fromRGB(63, 113, 76), Enum.Material.Grass)
         hill.Shape = Enum.PartType.Ball
+        hill.CanCollide = false
+        hill.CanQuery = false -- terrain scenery must never close a driving lane
     end
 
     local spawn = Instance.new("SpawnLocation")
