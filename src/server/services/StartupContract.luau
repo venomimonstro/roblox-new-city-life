@@ -33,6 +33,13 @@ function Contract.Validate()
     local propertyShops = requireChild(world, "DistrictProperties", "Folder")
     local bankBranches = requireChild(world, "BankBranches", "Folder")
     local crewOffices = requireChild(world, "CityCrews", "Folder")
+    local influence = requireChild(world, "TerritoryControl", "Folder")
+    assert(#influence:GetChildren() == 7,
+        "[StreetCity Gate] Seven competing territory points required")
+    for _, site in influence:GetChildren() do
+        local prompt = requireChild(site, "ProximityPrompt", "ProximityPrompt")
+        assert(prompt.Enabled, "[StreetCity Gate] Inactive territory capture point")
+    end
     local nature = requireChild(world, "CityNature", "Folder")
     requireChild(world, "CityRealEstate", "Folder")
     -- The application/approval-based CrewService is authoritative.
