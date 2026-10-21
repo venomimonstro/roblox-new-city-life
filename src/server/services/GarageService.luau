@@ -1,8 +1,7 @@
 --!strict
--- Server-authorized personal test garage. Persistent only after confirmed DataStore write.
+-- Unpublished-Studio shared test car only. Never writes player profile or economy.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local VehicleBuild = require(ReplicatedStorage.Shared:WaitForChild("VehicleBuild"))
-local ProfileService = require(script.Parent:WaitForChild("ProfileService"))
 local GarageService = {}
 local presets = {
     {name="Street", engineId="stock_i4", gearboxId="street_5", tireId="street"},
@@ -39,31 +38,16 @@ function GarageService.Start(car: any)
         local nextIndex = (devIndex[player.UserId] or 1) % #presets + 1
         local build = presets[nextIndex]
         if not VehicleBuild.Resolve(build) then return end
+        -- The shared free car exists only in unpublished Studio. Never mutate a
+        -- player's persistent / ephemeral garage when testing this shared prop.
         busy = true
-        local updated = false
-        if ProfileService.IsLoaded(player) then
-            updated = ProfileService.Mutate(player, function(profile)
-                if not profile or not profile.garage or not profile.garage.starter then return false end
-                profile.garage.starter = {
-                    engineId = build.engineId,
-                    gearboxId = build.gearboxId,
-                    tireId = build.tireId,
-                }
-                return true
-            end)
-        elseif game:GetService("RunService"):IsStudio() and game.GameId == 0 then
-            -- Local unpublished Studio testing only; cannot be persisted.
-            updated = true
-        end
-        if updated then
-            car.Model:SetAttribute("EngineId", build.engineId)
-            car.Model:SetAttribute("GearboxId", build.gearboxId)
-            car.Model:SetAttribute("TireId", build.tireId)
-            car.Model:SetAttribute("BuildName", build.name)
-            devIndex[player.UserId] = nextIndex
-            activeOwner = player.UserId
-            car.Model:SetAttribute("PrototypeGarageOwnerId", player.UserId)
-        end
+        car.Model:SetAttribute("EngineId", build.engineId)
+        car.Model:SetAttribute("GearboxId", build.gearboxId)
+        car.Model:SetAttribute("TireId", build.tireId)
+        car.Model:SetAttribute("BuildName", build.name)
+        devIndex[player.UserId] = nextIndex
+        activeOwner = player.UserId
+        car.Model:SetAttribute("PrototypeGarageOwnerId", player.UserId)
         busy = false
     end)
     game:GetService("Players").PlayerRemoving:Connect(function(player)
