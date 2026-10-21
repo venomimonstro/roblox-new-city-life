@@ -20,7 +20,10 @@ function Rules.Buy(profile: any, id: string, quotedPrice: number, opId: string):
     if not Properties[id] or profile.ownedProperties[id]
         or type(quotedPrice) ~= "number" or quotedPrice % 1 ~= 0
         or quotedPrice < 500 or quotedPrice > 100000 then return false end
-    if not Wallet.SpendCredits(profile, quotedPrice, opId) then return false end
+    -- SpendCredits is intentionally limited to small service purchases (<=2000);
+    -- real estate has its own validated 500..100000 price envelope.
+    if profile.credits < quotedPrice or not record(profile, opId) then return false end
+    profile.credits -= quotedPrice
     profile.ownedProperties[id] = {
         cost = quotedPrice,
         rented = false,
