@@ -5,6 +5,7 @@ local RunService = game:GetService("RunService")
 local ProfileService = require(script.Parent:WaitForChild("ProfileService"))
 local VehicleService = require(script.Parent:WaitForChild("VehicleService"))
 local Rules = require(game:GetService("ReplicatedStorage").Shared:WaitForChild("GarageTransactions"))
+local ParkingLayout = require(game:GetService("ReplicatedStorage").Shared:WaitForChild("ParkingLayout"))
 local PersonalGarage = {}
 
 local active: {[number]: any} = {}
@@ -13,7 +14,7 @@ local working: {[number]: boolean} = {}
 
 local function reserveSlot(userId: number): number?
     if slotByUser[userId] ~= nil then return slotByUser[userId] end
-    for slot = 0, 47 do
+    for slot = 0, ParkingLayout.Capacity - 1 do
         local used = false
         for _, existing in pairs(slotByUser) do
             if existing == slot then used = true break end
@@ -26,22 +27,13 @@ local function reserveSlot(userId: number): number?
     return nil
 end
 
-local function positionFor(slot: number): Vector3
-    -- 48 slots on the existing z=-200 / z=200 streets, away from race routes.
-    local row = math.floor(slot / 24)
-    local index = slot % 24
-    local side = if index % 2 == 0 then 1 else -1
-    local x = (math.floor(index / 2) + 1) * 18 * side
-    return Vector3.new(x, 4, if row == 0 then -200 else 200)
-end
-
 local function spawnSelected(player: Player): boolean
     if player.Parent ~= Players then return false end
     local data = ProfileService.Read(player)
     if not data or not data.garage[data.selectedVehicleId] then return false end
     local slot = reserveSlot(player.UserId)
     if slot == nil then
-        warn("[StreetCity] Parking capacity exceeded (48 slots)")
+        warn("[StreetCity] Parking capacity exceeded (" .. tostring(ParkingLayout.Capacity) .. " slots)")
         return false
     end
     local existing = active[player.UserId]
@@ -57,7 +49,9 @@ local function spawnSelected(player: Player): boolean
         existing.Model:SetAttribute("OwnedVehicleId", data.selectedVehicleId)
         return true
     end
-    local car = VehicleService.SpawnForPlayer(player, data.garage[data.selectedVehicleId], positionFor(slot))
+    local spawnPosition = ParkingLayout.Position(slot)
+    if not spawnPosition then return false end
+    local car = VehicleService.SpawnForPlayer(player, data.garage[data.selectedVehicleId], spawnPosition)
     if not car then
         if not existing then slotByUser[player.UserId] = nil end
         return false
