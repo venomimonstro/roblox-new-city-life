@@ -3,6 +3,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
+local RunService = game:GetService("RunService")
 local ProfileService = require(script.Parent:WaitForChild("ProfileService"))
 local PersonalGarage = require(script.Parent:WaitForChild("PersonalGarage"))
 local Rules = require(ReplicatedStorage.Shared:WaitForChild("GarageTransactions"))
@@ -121,6 +122,21 @@ function Shop.Start()
                 else
                     notify(player, "Installation denied; check profile and inventory")
                 end
+            end)
+    end
+
+    if RunService:IsStudio() and game.GameId == 0 then
+        -- Explicitly unpublished Studio only. This is NOT part of the public
+        -- economy; the sandbox profile itself is memory-only.
+        station(world, "DEV sandbox +25000 credits",
+            Vector3.new(-10, 0, -101), function(player)
+                local ok = ProfileService.Mutate(player, function(profile)
+                    if profile.credits > 9999975000 then return false end
+                    profile.credits += 25000
+                    return true
+                end)
+                notify(player, if ok then "Sandbox credits granted (+25000)"
+                    else "Sandbox grant unavailable")
             end)
     end
 
