@@ -53,6 +53,12 @@ def main() -> None:
     assert tree["$className"] == "DataModel"
     assert tree["Workspace"]["$properties"]["StreamingEnabled"] is True
 
+    bootstrap = (ROOT / "src/server/bootstrap.server.luau").read_text(encoding="utf-8")
+    shop_position = bootstrap.find("GarageMarketplaceService.Start()")
+    race_position = bootstrap.find("RaceService.Start()")
+    if shop_position == -1 or race_position == -1 or shop_position > race_position:
+        raise SystemExit("Invalid bootstrap order: shop must initialize before races")
+
     workflows = ROOT / ".github" / "workflows"
     if workflows.exists() and any(workflows.iterdir()):
         raise SystemExit("GitHub Actions workflows are explicitly disabled")
