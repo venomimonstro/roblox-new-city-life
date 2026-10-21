@@ -11,10 +11,10 @@ Open world **life simulator**, first release focuses on free exploration + cars 
 | 02 | Universal test car and secure headlights | **Partial prototype** | Car handling/collision/replication playtest |
 | 03 | Engine RPM, torque curve, gearbox; integration with provisional chassis | **Partial source implementation** | Studio driving/dynamics test, then clutch/differential |
 | 04 | Road-graph connectivity math | **Partial source implementation** | Render/connect roads, route testing |
-| 05 | Seven connected biomes: downtown, villas, old town, port, villages, mountains, coast | Planned | Travel all regions, streaming |
+| 05 | Seven district procedural blockouts and connector roads | **Source prototype** | Studio traversal, streaming and visual refinement |
 | 06 | Cube 4D creator tool, asset checker and car catalog | Planned | New car accepted only after validation |
 | 07 | Owned vehicle spawning, garage, persistence | Planned | Rejoin and restore state |
-| 08 | Parts/tuning and compatible new/used part catalog | Planned | 3 meaningfully different builds |
+| 08 | Catalog-backed validated tuning builds | **Domain foundation only** | Server integration, garage UI, used-parts economy |
 | 09 | Road graph, nearby traffic and NPC racers | Planned | Bounded perf budget |
 | 10 | PvP/PvE race routes, anti-shortcut rewards | Planned | Safe race invitation/settlement |
 | 11 | Credits, shop transactions and Robux cosmetics | Planned | No dupes, refund/receipt failure safety |
