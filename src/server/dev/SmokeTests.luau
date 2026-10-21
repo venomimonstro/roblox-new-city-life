@@ -177,6 +177,9 @@ function SmokeTests.Run()
     local world = workspace:FindFirstChild("StreetCityPrototypeWorld")
     assert(world and world:FindFirstChild("DistrictBlockouts"), "Missing generated districts")
     -- Prevent real collisions between procedural building lots and the street grid.
+    local legacyBuildings = world:FindFirstChild("Buildings")
+    assert(legacyBuildings and #legacyBuildings:GetChildren() == 0,
+        "Duplicate downtown building generator is still producing overlapping geometry")
     local districtRoot = world:FindFirstChild("DistrictBlockouts")
     for _, district in Districts do
         local zone = districtRoot:FindFirstChild(district.id)
