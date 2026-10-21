@@ -161,6 +161,9 @@ end
 
 local catalogPaint = {
     starter_hatch = {name = "Starter Hatch Prototype", color = Color3.fromRGB(75, 158, 141)},
+    starter_american_sedan = {name = "Liberty Four-Door", color = Color3.fromRGB(64, 126, 169)},
+    starter_american_pickup = {name = "Mesa Work Truck", color = Color3.fromRGB(178, 149, 87)},
+    starter_american_muscle = {name = "Canyon Classic", color = Color3.fromRGB(168, 62, 58)},
     street_coupe = {name = "Street Coupe Prototype", color = Color3.fromRGB(205, 53, 63)},
     sport_sedan = {name = "Sport Sedan Prototype", color = Color3.fromRGB(73, 119, 198)},
 }
@@ -172,6 +175,21 @@ function VehicleFactory.ApplyCatalog(car: Car, catalogId: string): boolean
     if not appearance then return false end
     car.Model.Name = appearance.name
     car.Model:SetAttribute("VehicleCatalogId", catalogId)
+    local hood = car.Model:FindFirstChild("Hood")
+    local rear = car.Model:FindFirstChild("Rear")
+    if hood and hood:IsA("BasePart") and rear and rear:IsA("BasePart") then
+        -- Visual approximation: chassis and wheel physics remain equal.
+        if catalogId == "starter_american_pickup" then
+            hood.Size = Vector3.new(5.4, 0.75, 3.0)
+            rear.Size = Vector3.new(5.4, 0.25, 3.5)
+        elseif catalogId == "starter_american_muscle" then
+            hood.Size = Vector3.new(5.4, 0.9, 3.8)
+            rear.Size = Vector3.new(5.4, 0.55, 2.5)
+        else
+            hood.Size = Vector3.new(5.4, 0.55, 3)
+            rear.Size = Vector3.new(5.4, 0.65, 2.5)
+        end
+    end
     for _, partName in {"Hood", "Rear"} do
         local panel = car.Model:FindFirstChild(partName)
         if panel and panel:IsA("BasePart") then
