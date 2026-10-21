@@ -9,7 +9,7 @@ local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Schema = require(Shared:WaitForChild("ProfileSchema"))
 
 local ProfileService = {}
-local store = DataStoreService:GetDataStore("StreetCityProfiles_v1")
+local store: any = nil
 local token = HttpService:GenerateGUID(false)
 local LEASE = 180
 local profiles: {[number]: any} = {}
@@ -17,6 +17,16 @@ local loading: {[number]: boolean} = {}
 local busy: {[number]: boolean} = {}
 local closing = false
 local sandbox = RunService:IsStudio() and game.GameId == 0
+
+local function activeStore(): any
+    -- GetDataStore may be unavailable in an unpublished Studio place.
+    -- Never open it during module loading; sandbox profiles stay in memory.
+    if sandbox then error("Persistent DataStore is disabled in Studio sandbox") end
+    if not store then
+        store = DataStoreService:GetDataStore("StreetCityProfiles_v1")
+    end
+    return store
+end
 local stateRemote: RemoteEvent? = nil
 local summaryThrottle: {[number]: number} = {}
 
@@ -47,7 +57,7 @@ local function acquire(player: Player)
         return
     end
     local ok, output = pcall(function()
-        return store:UpdateAsync(key(player), function(old)
+        return activeStore():UpdateAsync(key(player), function(old)
             if old ~= nil and type(old) ~= "table" then return nil end
             if old and old.owner ~= nil and old.owner ~= token then
                 if type(old.leaseUntil) ~= "number" or old.leaseUntil > os.time() then return nil end
@@ -97,7 +107,7 @@ function ProfileService.Mutate(player: Player, edit: (any) -> boolean): boolean
     local rejectedByRule = false
     local invalidOrLost = false
     local ok, output = pcall(function()
-        return store:UpdateAsync(key(player), function(old)
+        return activeStore():UpdateAsync(key(player), function(old)
             -- UpdateAsync can invoke this callback repeatedly on write conflicts.
             acceptedInTransform = false
             rejectedByRule = false
@@ -172,7 +182,7 @@ function ProfileService.Save(player: Player, release: boolean): boolean
     -- and never overwrites persisted gameplay data with an in-memory snapshot.
     for attempt = 1, 3 do
         local ok, output = pcall(function()
-            return store:UpdateAsync(key(player), function(old)
+            return activeStore():UpdateAsync(key(player), function(old)
                 if not owned(old) or not Schema.Decode(old.data) then return nil end
                 return {
                     owner = if release then nil else token,
