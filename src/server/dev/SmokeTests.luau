@@ -108,6 +108,14 @@ function SmokeTests.Run()
     executable.Parent = safeModel
     assert(not AssetValidator.Validate(safeModel).ok)
     executable:Destroy()
+    local unwantedSeat = Instance.new("VehicleSeat")
+    unwantedSeat.Parent = safeModel
+    assert(not AssetValidator.Validate(safeModel).ok, "Imported seat must be denied")
+    unwantedSeat:Destroy()
+    local unwantedRemote = Instance.new("RemoteEvent")
+    unwantedRemote.Parent = safeModel
+    assert(not AssetValidator.Validate(safeModel).ok, "Imported remote must be denied")
+    unwantedRemote:Destroy()
     safePart.Size = Vector3.new(60, 2, 9)
     assert(not AssetValidator.Validate(safeModel).ok)
     safeModel:Destroy()
