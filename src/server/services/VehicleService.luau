@@ -290,7 +290,13 @@ function VehicleService.Start()
         inputThrottle[player.UserId] = nil
     end)
 
-    RunService.Heartbeat:Connect(function(_dt)
+    -- Limit server-side ground raycasts to ~30Hz instead of every Heartbeat.
+    -- Actuators hold their most recent force between updates.
+    local physicsAccumulator = 0
+    RunService.Heartbeat:Connect(function(dt)
+        physicsAccumulator += dt
+        if physicsAccumulator < 1 / 30 then return end
+        physicsAccumulator = 0
         for _, vehicle in cars do
             if vehicle.Model.Parent then
                 updateCar(vehicle)
