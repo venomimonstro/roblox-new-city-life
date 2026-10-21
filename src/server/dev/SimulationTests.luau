@@ -7,6 +7,7 @@ local Schema = require(Shared:WaitForChild("ProfileSchema"))
 local Rules = require(Shared:WaitForChild("GarageTransactions"))
 local Outcome = require(Shared:WaitForChild("ProfileMutationOutcome"))
 local Race = require(Shared:WaitForChild("RaceValidation"))
+local Course = require(Shared:WaitForChild("RaceCourse"))
 local Parking = require(Shared:WaitForChild("ParkingLayout"))
 local SimulationTests = {}
 
@@ -96,18 +97,18 @@ function SimulationTests.Run()
 
     local operation = "race_award_000001"
     check(transact(store, "player_one", "server_A", function(profile)
-        return Rules.AwardCredits(profile, 650, operation)
+        return Rules.AwardCredits(profile, Course.RewardCredits, operation)
     end, true), "reward after simulated transform retry")
-    check(store:Peek("player_one").data.credits == 650, "retry awards credits only once")
+    check(store:Peek("player_one").data.credits == Course.RewardCredits, "retry awards credits only once")
     check(not transact(store, "player_one", "server_A", function(profile)
-        return Rules.AwardCredits(profile, 650, operation)
+        return Rules.AwardCredits(profile, Course.RewardCredits, operation)
     end), "reject duplicate reward")
-    check(store:Peek("player_one").data.credits == 650, "duplicate reward has no effect")
+    check(store:Peek("player_one").data.credits == Course.RewardCredits, "duplicate reward has no effect")
 
     check(transact(store, "player_one", "server_A", function(profile)
         return Rules.PurchasePart(profile, "tire_worn_used", "purchase_000001")
     end, true), "part purchase with retry")
-    check(store:Peek("player_one").data.credits == 550, "part price deducted once")
+    check(store:Peek("player_one").data.credits == Course.RewardCredits - 100, "part price deducted once")
     check(store:Peek("player_one").data.inventory.tire_worn_used == 1, "purchased inventory stored")
     check(transact(store, "player_one", "server_A", function(profile)
         return Rules.InstallPart(profile, "starter", "tire_worn_used", "install_000001")
@@ -124,14 +125,14 @@ function SimulationTests.Run()
     check(renew(store, "player_one", "server_A", true), "lease releases")
     check(acquire(store, "player_one", "server_B", 150) ~= nil, "next server may acquire released profile")
     check(not transact(store, "player_one", "server_A", function(profile)
-        return Rules.AwardCredits(profile, 650, "wrong_server_0001")
+        return Rules.AwardCredits(profile, Course.RewardCredits, "wrong_server_0001")
     end), "old server can no longer write")
-    check(store:Peek("player_one").data.credits == 550, "old-server edit does not change balance")
+    check(store:Peek("player_one").data.credits == Course.RewardCredits - 100, "old-server edit does not change balance")
     check(store:Peek("player_one").data.garage.starter.tireId == "worn", "garage survives rejoin")
 
     local second = acquire(store, "player_two", "server_A", 155)
     check(second ~= nil and second.data.credits == 0, "second player gets independent wallet")
-    check(store:Peek("player_one").data.credits == 550, "second player does not alter first wallet")
+    check(store:Peek("player_one").data.credits == Course.RewardCredits - 100, "second player does not alter first wallet")
     check(Outcome.Classify(true, false, true, false, nil, "server_A", false) == "rejected",
         "normal cancelled UpdateAsync does not quarantine")
     check(Outcome.Classify(false, true, false, false, nil, "server_A", false) == "uncertain",
@@ -149,19 +150,18 @@ function SimulationTests.Run()
     end
     check(Parking.Position(Parking.Capacity) == nil, "parking capacity limit")
 
-    local ordered = {
-        Vector3.new(0, 1, 23), Vector3.new(0, 1, 100),
-        Vector3.new(200, 1, 100), Vector3.new(200, 1, -100),
-        Vector3.new(0, 1, -100), Vector3.new(0, 1, 0),
-        Vector3.new(0, 1, 23),
-    }
+    -- Use the same authoritative course as the production race service.
+    local ordered = {Course.Start}
+    for _, point in Course.Points do
+        table.insert(ordered, point)
+    end
     for n = 2, #ordered do
         local before, after = ordered[n - 1], ordered[n]
         check(before.X == after.X or before.Z == after.Z, "race legs follow axes")
-        local minTime = (after - before).Magnitude / 145
-        check(Race.SegmentTimePlausible(before, after, minTime + 0.01, 145),
+        local minTime = (after - before).Magnitude / Course.MaxSpeed
+        check(Race.SegmentTimePlausible(before, after, minTime + 0.01, Course.MaxSpeed),
             "leg plausible at safe elapsed time")
-        check(not Race.SegmentTimePlausible(before, after, minTime * 0.25, 145),
+        check(not Race.SegmentTimePlausible(before, after, minTime * 0.25, Course.MaxSpeed),
             "shortcut leg rejected")
     end
 
