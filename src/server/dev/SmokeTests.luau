@@ -42,6 +42,6 @@ function SmokeTests.Run()
     assert(VehicleBuild.Resolve({engineId = "unknown", gearboxId = "street_5", tireId = "street"}) == nil)
     assert(VehicleBuild.Resolve({engineId = "stock_i4", gearboxId = "street_5", tireId = "street", finalDrive = 0}) == nil)
     assert(VehicleBuild.Resolve({engineId = "stock_i4", gearboxId = "street_5", tireId = "street", finalDrive = 4.2}) ~= nil)
-    print("[StreetCity] PASS: 25 deterministic smoke assertions")
+    print("[StreetCity] PASS: baseline, district and tuning smoke assertions")
 end
 return SmokeTests
