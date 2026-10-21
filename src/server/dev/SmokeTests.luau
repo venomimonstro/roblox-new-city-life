@@ -13,7 +13,10 @@ function SmokeTests.Run()
     assert(Math.SteeringAngularSpeed(1, 0, 1.65) == 0, "No stationary turning")
     assert(Math.SteeringAngularSpeed(1, 25, 1.65) < 0, "Forward steering")
     assert(Math.SteeringAngularSpeed(1, -25, 1.65) > 0, "Reverse steering")
-    print("[StreetCity] PASS: 8 deterministic math smoke checks")
+    assert(Math.TractionFactor(Enum.Material.Ice) < Math.TractionFactor(Enum.Material.Asphalt), "Ice must reduce traction")
+    assert(Math.TractionFactor(Enum.Material.Sand) < Math.TractionFactor(Enum.Material.Grass), "Sand must reduce traction")
+    assert(Math.TractionFactor(Enum.Material.Asphalt) == 1, "Normal road traction")
+    print("[StreetCity] PASS: 11 deterministic math smoke checks")
 end
 
 return SmokeTests

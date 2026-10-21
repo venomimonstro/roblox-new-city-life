@@ -2,8 +2,18 @@
 local VehicleMath = {}
 
 function VehicleMath.StudsPerSecondToKmh(speed: number): number
-    -- Roblox's conventional approximation: 1 stud = 0.28 meters.
     return math.max(0, speed) * 0.28 * 3.6
+end
+
+function VehicleMath.TractionFactor(material: Enum.Material): number
+    if material == Enum.Material.Ice then
+        return 0.25
+    elseif material == Enum.Material.Sand or material == Enum.Material.Mud then
+        return 0.57
+    elseif material == Enum.Material.Grass then
+        return 0.75
+    end
+    return 1
 end
 
 function VehicleMath.DriveAcceleration(
@@ -25,9 +35,7 @@ function VehicleMath.DriveAcceleration(
 end
 
 function VehicleMath.SteeringAngularSpeed(
-    steer: number,
-    longitudinalSpeed: number,
-    maxRate: number
+    steer: number, longitudinalSpeed: number, maxRate: number
 ): number
     local speed = math.abs(longitudinalSpeed)
     if speed < 1 then
