@@ -249,7 +249,25 @@ function ProfileService.Start()
         summaryThrottle[player.UserId] = now
         emitSummary(player)
     end)
-    Players.PlayerAdded:Connect(function(player) task.spawn(acquire, player) end)
+    local function queueAcquire(player: Player)
+        task.spawn(function()
+            -- A previous connection with this UserId may still be finishing
+            -- PlayerRemoving/UpdateAsync. Retry rather than abandoning the new join.
+            for _ = 1, 60 do
+                if player.Parent ~= Players or closing then return end
+                local id = player.UserId
+                if not loading[id] and not profiles[id] and not busy[id] then
+                    acquire(player)
+                    return
+                end
+                task.wait(0.25)
+            end
+            if player.Parent == Players then
+                player:Kick("Previous profile session is still closing. Reconnect.")
+            end
+        end)
+    end
+    Players.PlayerAdded:Connect(queueAcquire)
     Players.PlayerRemoving:Connect(function(player)
         summaryThrottle[player.UserId] = nil
         local deadline = os.clock() + 10
@@ -264,7 +282,7 @@ function ProfileService.Start()
             quarantined[player.UserId] = true
         end
     end)
-    for _, player in Players:GetPlayers() do task.spawn(acquire, player) end
+    for _, player in Players:GetPlayers() do queueAcquire(player) end
     task.spawn(function()
         while not closing do
             task.wait(55)
