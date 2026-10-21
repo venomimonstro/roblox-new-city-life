@@ -79,7 +79,7 @@ function SmokeTests.Run()
     assert(MutationOutcome.Classify(true, false, false, true, nil, token, false) == "uncertain")
     assert(MutationOutcome.Classify(true, false, false, false, nil, token, false) == "uncertain")
     local fresh = ProfileSchema.New()
-    assert(fresh.schemaVersion == 2 and fresh.garage.starter ~= nil)
+    assert(fresh.schemaVersion == 3 and fresh.garage.starter ~= nil)
     local decoded = ProfileSchema.Decode(fresh)
     assert(decoded and decoded.credits == 0)
     fresh.credits = -1
@@ -88,11 +88,22 @@ function SmokeTests.Run()
     invalid.garage.starter.engineId = "invalid"
     assert(ProfileSchema.Decode(invalid) == nil)
     assert(ProfileSchema.Decode({schemaVersion = 999, credits = 0, garage = {}}) == nil)
+    local priorV2 = ProfileSchema.New()
+    priorV2.schemaVersion = 2
+    priorV2.bankCredits = nil
+    priorV2.stolenGoods = nil
+    priorV2.nutrition = nil
+    priorV2.fitness = nil
+    priorV2.bodyFat = nil
+    local upgraded = ProfileSchema.Decode(priorV2)
+    assert(upgraded and upgraded.schemaVersion == 3 and upgraded.credits == 0
+        and upgraded.bankCredits == 0 and upgraded.stolenGoods == 0
+        and upgraded.fitness == 15, "V2 to V3 migration must preserve wallet and cars")
     local legacy = ProfileSchema.Decode({
         schemaVersion = 1, credits = 1200,
         garage = {starter = {engineId = "stock_i4", gearboxId = "street_5", tireId = "street"}},
     })
-    assert(legacy and legacy.schemaVersion == 2 and legacy.selectedVehicleId == "starter")
+    assert(legacy and legacy.schemaVersion == 3 and legacy.selectedVehicleId == "starter")
     local wallet = ProfileSchema.New()
     assert(Transactions.AwardCredits(wallet, 2000, "race_test_00001"))
     assert(not Transactions.AwardCredits(wallet, 2000, "race_test_00001"))
