@@ -181,7 +181,8 @@ function VehicleService.SpawnForPlayer(player: Player, build: any, position: Vec
     local folder = workspace:FindFirstChild("ActiveVehicles")
     if not folder then return nil end
     local success, created = pcall(function()
-        return Factory.Create(folder, position)
+        -- Personal parking follows east-west streets (z=+/-200).
+        return Factory.Create(folder, position, math.pi / 2)
     end)
     if not success then
         warn("[StreetCity] Vehicle creation failed: " .. tostring(created))
