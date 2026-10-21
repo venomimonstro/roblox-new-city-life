@@ -55,7 +55,9 @@ local function createAgent(waypoints: {Vector3}, segment: number,
     catalogId: string, police: boolean): any?
     local destination = waypoints[segment]
     local previous = waypoints[(segment - 2) % #waypoints + 1]
-    local midpoint = (destination + previous) * 0.5
+    -- Police begin at 70% along the segment; otherwise they spawn INSIDE a
+    -- civilian car placed at its midpoint and explode on the first frame.
+    local midpoint = previous:Lerp(destination, if police then 0.7 else 0.5)
     local facing = (destination - previous).Unit
     -- Factory LookVector = (-sin(yaw),0,-cos(yaw)).
     local yaw = math.atan2(-facing.X, -facing.Z)
@@ -65,6 +67,7 @@ local function createAgent(waypoints: {Vector3}, segment: number,
     return {
         car = car, points = waypoints, nextIndex = segment,
         police = police, lastPos = midpoint,
+        originIndex = segment, catalogId = catalogId,
         stuckAt = os.clock(), stolenAt = nil,
     }
 end
@@ -154,6 +157,11 @@ function Traffic.Start()
                 warn("[StreetCity] Traffic agent failed: " .. tostring(status))
             elseif status == "remove" then
                 table.remove(agents, index)
+                -- Keep the city populated even after wrecks, despawns or theft.
+                -- Each slot replaces only its previous destroyed/abandoned car.
+                local replacement = createAgent(agent.points, agent.originIndex,
+                    agent.catalogId, agent.police)
+                if replacement then table.insert(agents, replacement) end
             end
         end
     end)
