@@ -54,7 +54,7 @@ local function station(parent: Instance, label: string, pos: Vector3, action: (P
         if not success then
             warn("[StreetCity] Shop interaction failed for " .. tostring(player.UserId)
                 .. ": " .. tostring(err))
-            notify(player, "Shop temporarily unavailable. Your balance was not manually changed.")
+            notify(player, "Shop unavailable; transaction status uncertain. Please check your balance.")
         end
     end)
 end
