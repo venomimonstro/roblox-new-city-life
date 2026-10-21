@@ -10,6 +10,7 @@ local ProfileService = require(Services:WaitForChild("ProfileService"))
 local PersonalGarage = require(Services:WaitForChild("PersonalGarage"))
 local RaceService = require(Services:WaitForChild("RaceService"))
 local GarageMarketplaceService = require(Services:WaitForChild("GarageMarketplaceService"))
+local StartupContract = require(Services:WaitForChild("StartupContract"))
 
 local success, err = pcall(function()
     ProfileService.Start() -- Uses isolated memory-only profiles in unpublished Studio
@@ -20,6 +21,7 @@ local success, err = pcall(function()
     PersonalGarage.Start()
     GarageMarketplaceService.Start()
     RaceService.Start()
+    StartupContract.Validate()
     if RunService:IsStudio() then
         require(script.Parent:WaitForChild("dev"):WaitForChild("SmokeTests")).Run()
         require(script.Parent:WaitForChild("dev"):WaitForChild("ScenarioTests")).Run()
