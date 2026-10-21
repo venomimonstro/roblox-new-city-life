@@ -106,13 +106,26 @@ function ProfileService.Mutate(player: Player, edit: (any) -> boolean): boolean
             return {owner = token, leaseUntil = os.time() + LEASE, data = candidate}
         end)
     end)
-    if ok and owned(output) and Schema.Decode(output.data) then
+    local confirmed = ok and acceptedInTransform and owned(output)
+        and Schema.Decode(output.data) ~= nil
+    if confirmed then
         profiles[id] = Schema.Decode(output.data)
         emitSummary(player)
+    elseif not ok or not owned(output) then
+        -- Ownership cannot be proven; stop all further account mutations.
+        profiles[id] = nil
+        if player.Parent == Players then
+            task.defer(function()
+                if player.Parent == Players then player:Kick("Profile lock unconfirmed. Please reconnect.") end
+            end)
+        end
+    elseif Schema.Decode(output.data) then
+        -- Rejected business rule. Use fresh snapshot and report failure.
+        profiles[id] = Schema.Decode(output.data)
     end
     busy[id] = nil
     if not ok then warn("[StreetCity] Profile mutation failed for user " .. tostring(id)) end
-    return ok and acceptedInTransform and owned(output) and profiles[id] ~= nil
+    return confirmed
 end
 
 -- Renew/release only the most recently committed DataStore data; never overwrite
