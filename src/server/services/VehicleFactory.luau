@@ -40,7 +40,7 @@ local function geometry(
     return p
 end
 
-function VehicleFactory.Create(parent: Instance, position: Vector3): Car
+function VehicleFactory.Create(parent: Instance, position: Vector3, heading: number?): Car
     local model = Instance.new("Model")
     model.Name = "PrototypeCoupe"
     model:SetAttribute("StreetCityVehicle", true)
@@ -145,7 +145,7 @@ function VehicleFactory.Create(parent: Instance, position: Vector3): Car
     yaw.AngularVelocity = Vector3.zero
     yaw.Parent = chassis
 
-    model:PivotTo(CFrame.new(position))
+    model:PivotTo(CFrame.new(position) * CFrame.Angles(0, heading or 0, 0))
     model.Parent = parent
     return {
         Model = model,
