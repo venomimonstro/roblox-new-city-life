@@ -40,10 +40,11 @@ local function geometry(
     return p
 end
 
-function VehicleFactory.Create(parent: Instance, position: Vector3, heading: number?): Car
+function VehicleFactory.Create(parent: Instance, position: Vector3, heading: number?, ownerUserId: number?): Car
     local model = Instance.new("Model")
     model.Name = "PrototypeCoupe"
     model:SetAttribute("StreetCityVehicle", true)
+    if ownerUserId ~= nil then model:SetAttribute("OwnerUserId", ownerUserId) end
 
     local chassis = Instance.new("Part")
     chassis.Name = "Chassis"
