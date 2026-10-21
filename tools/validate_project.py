@@ -150,6 +150,13 @@ def main() -> None:
     if "local function activeStore()" not in profile_source or "for attempt = 1, 8 do" not in profile_source:
         raise SystemExit("P1: rejoin must allow bounded lease acquisition retry")
 
+    district = (ROOT / "src/server/services/DistrictService.luau").read_text(encoding="utf-8")
+    smoke = (ROOT / "src/server/dev/SmokeTests.luau").read_text(encoding="utf-8")
+    if "Building_" not in district or "math.round(offsetX / 100)" not in smoke:
+        raise SystemExit("P0: city traffic lanes must be checked for building overlap")
+    if "+ ((n - 1) % 4 - 1.5) * 100 + 25" in district:
+        raise SystemExit("P0: old city building offsets obstruct the road grid")
+
     workflows = ROOT / ".github" / "workflows"
     if workflows.exists() and any(workflows.iterdir()):
         raise SystemExit("GitHub Actions workflows are explicitly disabled")
