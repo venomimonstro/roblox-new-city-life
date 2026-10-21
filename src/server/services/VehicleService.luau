@@ -37,7 +37,9 @@ local function assignOwner(car: Factory.Car)
     if owner and ownerId == nil and car.Model:GetAttribute("TrafficNPC") == true then
         car.Model:SetAttribute("TrafficNPC", false)
         car.Model:SetAttribute("StolenVehicle", true)
-        Wanted.AddHeat(owner, 1, "vehicle theft")
+        car.Model:SetAttribute("ThiefUserId", owner.UserId)
+        Wanted.AddHeat(owner, if car.Model:GetAttribute("IsPolice") then 3 else 1,
+            "vehicle theft")
     end
     if occupant and (not owner or (ownerId ~= nil and owner.UserId ~= ownerId)) then
         -- Reject a direct VehicleSeat:Sit/Touch seating attempt immediately,
@@ -225,7 +227,7 @@ function VehicleService.SpawnTrafficVehicle(catalogId: string, position: Vector3
     local folder = workspace:FindFirstChild("ActiveVehicles")
     if not folder then return nil end
     local safe, result = pcall(function()
-        return Factory.Create(folder, position, heading, if isPolice then -1 else nil)
+        return Factory.Create(folder, position, heading, nil)
     end)
     if not safe then
         warn("[StreetCity] Ambient traffic spawn failed: " .. tostring(result))
@@ -245,6 +247,16 @@ function VehicleService.SpawnTrafficVehicle(catalogId: string, position: Vector3
     end)
     assignOwner(car)
     return car
+end
+
+function VehicleService.DespawnByModel(model: Model): boolean
+    for _, car in cars do
+        if car.Model == model then
+            VehicleService.Despawn(car)
+            return true
+        end
+    end
+    return false
 end
 
 function VehicleService.SetTrafficControls(car: Factory.Car, throttle: number, steer: number)
