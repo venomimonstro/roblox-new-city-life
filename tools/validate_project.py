@@ -157,6 +157,10 @@ def main() -> None:
     if "+ ((n - 1) % 4 - 1.5) * 100 + 25" in district:
         raise SystemExit("P0: old city building offsets obstruct the road grid")
 
+    legacy_world = (ROOT / "src/server/services/WorldService.luau").read_text(encoding="utf-8")
+    if "for x = -2, 1 do" in legacy_world:
+        raise SystemExit("P0: duplicate downtown building generator reintroduced")
+
     workflows = ROOT / ".github" / "workflows"
     if workflows.exists() and any(workflows.iterdir()):
         raise SystemExit("GitHub Actions workflows are explicitly disabled")
