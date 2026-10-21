@@ -2,7 +2,7 @@
 
 ## Automated checks (local, no CI)
 1. \`python3 tools/validate_project.py\`: checks Rojo project file, mandatory source paths and prohibition of workflow files.
-2. In Roblox Studio, server boot executes \`SmokeTests.Run()\` **only when RunService:IsStudio()** and prints eight deterministic math assertions. A test failure stops boot and is visible in Output.
+2. In Roblox Studio, server boot executes \`SmokeTests.Run()\` **only when RunService:IsStudio()** and checks drivetrain calculations, profile migration, economic transactions, and race plausibility assertions. A test failure stops boot and is visible in Output.
 3. \`rojo build default.project.json -o StreetCity.rbxlx\` should produce a standalone place. This build has NOT been executed in this environment.
 4. Optional developer workstation checks: \`stylua --check src\`, \`selene src\`, then inspect Luau type diagnostics in Studio.
 
@@ -27,4 +27,15 @@
 - Abuse of all RemoteEvents.
 - Separate Staging experience, signed off release/rollback.
 
-**Status statement:** only code/static files and minimal Studio runtime asserts are committed so far. No evidence of full gameplay, mobile, server load, Roblox publishing or monetization verification.
+## New closed-loop test
+- [ ] Run unpublished Studio: personal car spawns with an **ephemeral** account profile.
+- [ ] Drive through the six numbered time-trial checkpoints; server awards 650 credits after a plausible finish.
+- [ ] Buy a used or new part, confirm credits decrease and inventory is updated.
+- [ ] Exit car, install the part, verify personal car refreshes and tuning changes.
+- [ ] Repeat same operation ID in pure test; balance/inventory must not change twice.
+- [ ] Buy a second car after sufficient legitimate credits, switch at personal garage.
+- [ ] In a published **staging** place: verify V1->V2 profile migration, safe conflict handling, and restore selected personal car.
+- [ ] Disconnect driving client; ensure car stops accelerating after input timeout.
+- [ ] Validate all network remotes against spam, invalid number types, NaN, infinite values and non-driver input.
+
+**Current evidence:** all listed files exist in GitHub and source smoke assertions are authored. The Roblox Studio runtime, Rojo build, real device FPS and server load tests remain **unverified**. No public deployment or Robux purchase processing.
