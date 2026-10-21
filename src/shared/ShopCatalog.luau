@@ -8,6 +8,12 @@ local offers = {
     tire_worn_used = {slot = "tireId", partId = "worn", price = 100, quality = "used"},
     weapon_foam_baton = {slot = "gear", partId = "foam_baton", price = 500, quality = "equipment"},
     weapon_paint_blaster = {slot = "gear", partId = "paint_blaster", price = 1800, quality = "equipment"},
+    weapon_training_gloves = {slot = "gear", partId = "training_gloves", price = 180, quality = "equipment"},
+    weapon_stun_wand = {slot = "gear", partId = "stun_wand", price = 1000, quality = "equipment"},
+    weapon_arcade_pistol = {slot = "gear", partId = "arcade_pistol", price = 2600, quality = "equipment"},
+    weapon_arcade_shotgun = {slot = "gear", partId = "arcade_shotgun", price = 4100, quality = "equipment"},
+    weapon_arcade_smg = {slot = "gear", partId = "arcade_smg", price = 5400, quality = "equipment"},
+    weapon_arcade_rifle = {slot = "gear", partId = "arcade_rifle", price = 7300, quality = "equipment"},
 }
 for _, offer in pairs(offers) do table.freeze(offer) end
 return table.freeze(offers)
