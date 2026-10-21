@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
 local Profile = require(script.Parent:WaitForChild("ProfileService"))
 local Society = require(script.Parent:WaitForChild("DistrictSocietyService"))
+local Wanted = require(script.Parent:WaitForChild("WantedService"))
 local Rules = require(ReplicatedStorage.Shared:WaitForChild("GarageTransactions"))
 local Crew = {}
 local groups: {[string]: any} = {}
@@ -237,6 +238,45 @@ function Crew.Start()
                 removeMember(player.UserId)
             end)
     end
+    -- Followers visually travel with their leader, affecting the neighborhood.
+    -- They have no real combat damage; an outlaw escort can be arrested if the
+    -- leader accumulates significant wanted stars. The contract is session-only.
+    task.spawn(function()
+        while true do
+            task.wait(2)
+            for _, group in pairs(groups) do
+                if not group.hired or not group.hired.Parent then continue end
+                local owner = Players:GetPlayerByUserId(group.owner)
+                local char = owner and owner.Character
+                local human = char and char:FindFirstChildOfClass("Humanoid")
+                local rootPart = char and char:FindFirstChild("HumanoidRootPart")
+                if not owner or not human or human.Health <= 0
+                    or not rootPart or not rootPart:IsA("BasePart") then continue end
+                for i, npc in group.hired:GetChildren() do
+                    if npc:IsA("Model") and npc.PrimaryPart then
+                        local location = rootPart.CFrame
+                            * CFrame.new(i * 2.5 - 5, 0, 5)
+                        npc:PivotTo(location)
+                    end
+                end
+                local now = os.clock()
+                if now - (group.lastEffect or 0) < 90 then continue end
+                group.lastEffect = now
+                if group.hires > 0 then
+                    Society.EffectForPlayer(owner,
+                        if group.typeId == "federal" then "security" else "crime", 1)
+                end
+                if group.typeId == "gang" and group.hires > 0
+                    and Wanted.GetLevel(owner) >= 4 then
+                    local npcs = group.hired:GetChildren()
+                    local npc = npcs[#npcs]
+                    if npc then npc:Destroy() end
+                    group.hires = math.max(0, group.hires - 1)
+                    say(owner, "City police arrested one of your gang escorts")
+                end
+            end
+        end
+    end)
     Players.PlayerRemoving:Connect(function(player)
         removeMember(player.UserId)
         lastAction[player.UserId] = nil
