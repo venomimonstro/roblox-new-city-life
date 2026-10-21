@@ -70,8 +70,32 @@ guide.TextSize = 13
 guide.TextWrapped = true
 guide.TextXAlignment = Enum.TextXAlignment.Left
 guide.Font = Enum.Font.Gotham
-guide.Text = "Моя машина: бирюзовая стойка рядом со стартом. Подойдите и нажмите E."
+guide.Text = "Ваш дом и гараж рядом. Верните личную машину у стойки гаража; работа и гонки — по всему городу."
 guide.Parent = gui
+
+local wanted = Instance.new("TextLabel")
+wanted.Name = "WantedStars"
+wanted.AnchorPoint = Vector2.new(1, 0)
+wanted.Position = UDim2.new(1, -14, 0, 20)
+wanted.Size = UDim2.fromOffset(190, 32)
+wanted.BackgroundTransparency = 1
+wanted.TextColor3 = Color3.fromRGB(249, 198, 84)
+wanted.TextXAlignment = Enum.TextXAlignment.Right
+wanted.Font = Enum.Font.GothamBold
+wanted.TextSize = 22
+wanted.Text = ""
+wanted.Parent = gui
+
+task.spawn(function()
+    local remote = ReplicatedStorage:WaitForChild("StreetCityWantedState", 15)
+    if not remote or not remote:IsA("RemoteEvent") then return end
+    remote.OnClientEvent:Connect(function(level: any)
+        if type(level) ~= "number" or level % 1 ~= 0
+            or level < 0 or level > 5 then return end
+        wanted.Text = string.rep("★", level)
+    end)
+    remote:FireServer()
+end)
 
 task.spawn(function()
     local remote = ReplicatedStorage:WaitForChild("StreetCityProfileState", 8)
@@ -152,7 +176,7 @@ RunService.RenderStepped:Connect(function(dt)
     panel.Visible = seat ~= nil
     guide.Text = if seat
         then "Гонка: зелёная площадка на центральной дороге. Затем магазин и гараж."
-        else "Моя машина: бирюзовая стойка у старта. Подойдите и нажмите E."
+        else "Вы дома: машина в гараже. Есть работа, рыбалка, NPC, угон и полиция."
     if seat then
         vehicleInput:FireServer(seat.ThrottleFloat, seat.SteerFloat)
         local kmh = seat.AssemblyLinearVelocity.Magnitude * 0.28 * 3.6
