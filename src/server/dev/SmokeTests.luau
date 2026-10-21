@@ -218,7 +218,9 @@ function SmokeTests.Run()
                 "Shop stand must not obstruct driving or suspension")
         end
     end
-    assert(shopCount >= 11, "Expected five purchase stands, five installation stands, and dealer")
+    assert(shopCount >= 12, "Expected five part stands, five installs, and two car dealers")
+    assert(world:FindFirstChild("Shop_Buy Sport Sedan: 24000 cr"),
+        "Catalogued sport sedan must have a real purchase interaction")
     for _, offerId in {"tire_worn_used", "tire_sport_new", "gearbox_sport_new",
         "engine_sport_new", "engine_v6_used"} do
         local install = world:FindFirstChild("Shop_Install " .. offerId)
