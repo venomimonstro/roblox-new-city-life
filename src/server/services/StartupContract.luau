@@ -31,6 +31,17 @@ function Contract.Validate()
     local locator = requireChild(world, "FindMyCarTerminal", "BasePart")
     requireChild(locator, "ProximityPrompt", "ProximityPrompt")
     requireChild(world, "TimeTrialStart", "BasePart")
+    local jobs = requireChild(world, "CityJobs", "Folder")
+    local citizens = requireChild(world, "CityPedestrians", "Folder")
+    assert(#citizens:GetChildren() >= 20,
+        "[StreetCity Gate] City pedestrian population missing")
+    for _, jobId in {"taxi", "firefighter", "police", "cleaner", "office"} do
+        requireChild(jobs, "JobStart_" .. jobId, "BasePart")
+        requireChild(jobs, "JobFinish_" .. jobId, "BasePart")
+    end
+    requireChild(jobs, "Fish_Cast", "BasePart")
+    requireChild(jobs, "Fish_Catch", "BasePart")
+    requireChild(jobs, "Fish_Sell", "BasePart")
     for index = 1, #Course.Points do
         local marker = requireChild(world, "CircuitCheckpoint_" .. tostring(index), "BasePart")
         assert(not marker.CanCollide and not marker.CanQuery,
@@ -47,11 +58,17 @@ function Contract.Validate()
         end
     end
     assert(stands >= 11, "[StreetCity Gate] Incomplete dealership or part shop")
-    requireChild(workspace, "ActiveVehicles", "Folder")
+    local vehicles = requireChild(workspace, "ActiveVehicles", "Folder")
+    local npcCars = 0
+    for _, car in vehicles:GetChildren() do
+        if car:GetAttribute("TrafficNPC") == true then npcCars += 1 end
+    end
+    assert(npcCars >= 6, "[StreetCity Gate] Ambient traffic agents failed to spawn")
     local remotes = requireChild(ReplicatedStorage, "StreetCityRemotes", "Folder")
     requireChild(remotes, "VehicleInput", "RemoteEvent")
     requireChild(remotes, "ToggleHeadlights", "RemoteEvent")
     requireChild(remotes, "GarageNotice", "RemoteEvent")
+    requireChild(ReplicatedStorage, "StreetCityWantedState", "RemoteEvent")
     requireChild(ReplicatedStorage, "StreetCityProfileState", "RemoteEvent")
     print("[StreetCity Gate] PASS: critical world, player flow, dealer, race and remotes")
 end
