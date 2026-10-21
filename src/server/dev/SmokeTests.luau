@@ -7,6 +7,7 @@ local RoadGraph = require(Shared:WaitForChild("RoadGraph"))
 local VehicleBuild = require(Shared:WaitForChild("VehicleBuild"))
 local Districts = require(Shared:WaitForChild("DistrictConfig"))
 local ProfileSchema = require(Shared:WaitForChild("ProfileSchema"))
+local MutationOutcome = require(Shared:WaitForChild("ProfileMutationOutcome"))
 local Transactions = require(Shared:WaitForChild("GarageTransactions"))
 local RaceValidation = require(Shared:WaitForChild("RaceValidation"))
 local AssetValidator = require(script.Parent.Parent:WaitForChild("services"):WaitForChild("ModelAssetValidator"))
@@ -52,6 +53,17 @@ function SmokeTests.Run()
     assert(VehicleBuild.Resolve({engineId = "unknown", gearboxId = "street_5", tireId = "street"}) == nil)
     assert(VehicleBuild.Resolve({engineId = "stock_i4", gearboxId = "street_5", tireId = "street", finalDrive = 0}) == nil)
     assert(VehicleBuild.Resolve({engineId = "stock_i4", gearboxId = "street_5", tireId = "street", finalDrive = 4.2}) ~= nil)
+    local token = "server-token"
+    assert(MutationOutcome.Classify(true, false, true, false, nil, token, false) == "rejected")
+    assert(MutationOutcome.Classify(true, true, false, false, {
+        owner = token, data = {},
+    }, token, true) == "committed")
+    assert(MutationOutcome.Classify(true, true, false, false, {
+        owner = "different-server", data = {},
+    }, token, true) == "uncertain")
+    assert(MutationOutcome.Classify(false, false, true, false, nil, token, false) == "uncertain")
+    assert(MutationOutcome.Classify(true, false, false, true, nil, token, false) == "uncertain")
+    assert(MutationOutcome.Classify(true, false, false, false, nil, token, false) == "uncertain")
     local fresh = ProfileSchema.New()
     assert(fresh.schemaVersion == 2 and fresh.garage.starter ~= nil)
     local decoded = ProfileSchema.Decode(fresh)
