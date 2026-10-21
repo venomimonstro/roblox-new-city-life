@@ -35,8 +35,11 @@ function DistrictService.Start()
         for n = 1, district.buildingCount do
             local height = rng:NextInteger(14, if district.id == "downtown" then 95 else 38)
             createPart(zone, "Building_" .. n, Vector3.new(30, height, 30),
-                Vector3.new(x + ((n - 1) % 4 - 1.5) * 100 + 25,
-                    height / 2 - 1, z + (math.floor((n - 1) / 4) - 1) * 100 + 25),
+                -- Roads are on 100-stud grid lines, width 25 studs.
+                -- Center every building halfway BETWEEN grid lines. The old
+                -- +25 offset intersected road collision by ~2.5 studs.
+                Vector3.new(x + ((n - 1) % 4 - 1.5) * 100,
+                    height / 2 - 1, z + (math.floor((n - 1) / 4) - 1) * 100 + 50),
                 Enum.Material.Concrete, Color3.fromRGB(130 + index * 8, 135, 148))
         end
         if district.id ~= "downtown" then
