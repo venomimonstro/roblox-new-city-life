@@ -185,6 +185,39 @@ ContextActionService:BindAction("StreetCityLights", toggleLights, true, Enum.Key
 ContextActionService:SetTitle("StreetCityLights", "Lights")
 ContextActionService:SetPosition("StreetCityLights", UDim2.fromScale(0.8, 0.63))
 
+local districtState = Instance.new("TextLabel")
+districtState.Name = "DistrictWellbeing"
+districtState.Position = UDim2.fromOffset(14, 141)
+districtState.Size = UDim2.new(0.86, 0, 0, 34)
+districtState.BackgroundTransparency = 0.3
+districtState.BackgroundColor3 = Color3.fromRGB(19, 27, 37)
+districtState.TextColor3 = Color3.fromRGB(216, 231, 222)
+districtState.TextSize = 12
+districtState.Font = Enum.Font.Gotham
+districtState.TextXAlignment = Enum.TextXAlignment.Left
+districtState.TextWrapped = true
+districtState.Text = "District statistics loading..."
+districtState.Parent = gui
+
+task.spawn(function()
+    local remote = ReplicatedStorage:WaitForChild("StreetCityDistrictState", 20)
+    if not remote or not remote:IsA("RemoteEvent") then return end
+    remote.OnClientEvent:Connect(function(id: any, safety: any, prosperity: any,
+        population: any, propertyPrice: any, trust: any)
+        if type(id) ~= "string" or #id > 40
+            or type(safety) ~= "number" or type(prosperity) ~= "number"
+            or type(population) ~= "number" or type(propertyPrice) ~= "number"
+            or type(trust) ~= "number" then return end
+        districtState.Text = string.format(
+            "%s | Safety %d | Welfare %d | Residents %d | Real estate %d%% | Banks %d",
+            id, safety, prosperity, population, propertyPrice, trust)
+    end)
+    while player.Parent == Players do
+        remote:FireServer()
+        task.wait(12)
+    end
+end)
+
 local weatherName = Instance.new("TextLabel")
 weatherName.Name = "WeatherIndicator"
 weatherName.Position = UDim2.fromOffset(14, 112)
