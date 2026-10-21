@@ -16,7 +16,9 @@ local driveState: { [Model]: { gear: number, rpm: number, signature: string } } 
 
 local function isDriver(player: Player, car: Factory.Car): boolean
     local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-    return humanoid ~= nil and car.Seat.Occupant == humanoid
+    local ownerId = car.Model:GetAttribute("OwnerUserId")
+    return (ownerId == nil or ownerId == player.UserId)
+        and humanoid ~= nil and car.Seat.Occupant == humanoid
 end
 
 local function assignOwner(car: Factory.Car)
@@ -121,6 +123,32 @@ local function updateCar(car: Factory.Car)
         VehicleMath.SteeringAngularSpeed(steer, longitudinal, cfg.SteeringRate) * traction,
         0
     )
+end
+
+function VehicleService.SpawnForPlayer(player: Player, build: any, position: Vector3): Factory.Car?
+    if not VehicleBuild.Resolve(build) then return nil end
+    local folder = workspace:FindFirstChild("ActiveVehicles")
+    if not folder then return nil end
+    local car = Factory.Create(folder, position)
+    car.Model:SetAttribute("OwnerUserId", player.UserId)
+    car.Model:SetAttribute("EngineId", build.engineId)
+    car.Model:SetAttribute("GearboxId", build.gearboxId)
+    car.Model:SetAttribute("TireId", build.tireId)
+    table.insert(cars, car)
+    driveState[car.Model] = { gear = 1, rpm = 850, signature = "" }
+    table.insert(ownershipConnections, car.Seat:GetPropertyChangedSignal("Occupant"):Connect(function()
+        assignOwner(car)
+    end))
+    assignOwner(car)
+    return car
+end
+
+function VehicleService.Despawn(car: Factory.Car)
+    for i, entry in cars do
+        if entry == car then table.remove(cars, i) break end
+    end
+    driveState[car.Model] = nil
+    car.Model:Destroy()
 end
 
 function VehicleService.Start()
