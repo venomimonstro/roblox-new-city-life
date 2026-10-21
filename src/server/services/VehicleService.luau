@@ -178,7 +178,14 @@ function VehicleService.SpawnForPlayer(player: Player, build: any, position: Vec
     if not VehicleBuild.Resolve(build) then return nil end
     local folder = workspace:FindFirstChild("ActiveVehicles")
     if not folder then return nil end
-    local car = Factory.Create(folder, position)
+    local success, created = pcall(function()
+        return Factory.Create(folder, position)
+    end)
+    if not success then
+        warn("[StreetCity] Vehicle creation failed: " .. tostring(created))
+        return nil
+    end
+    local car: Factory.Car = created
     car.Model:SetAttribute("OwnerUserId", player.UserId)
     car.Model:SetAttribute("EngineId", build.engineId)
     car.Model:SetAttribute("GearboxId", build.gearboxId)
