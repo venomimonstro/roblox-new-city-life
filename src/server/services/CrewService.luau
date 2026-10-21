@@ -152,8 +152,9 @@ function Crew.Start()
             local snapshot = Profile.Read(player)
             if not snapshot then return end
             if snapshot.allegiance ~= targetSide then
+                local chosenAt = os.time()
                 local changed = Profile.Mutate(player, function(data)
-                    return Rules.SetAllegiance(data, targetSide, os.time())
+                    return Rules.SetAllegiance(data, targetSide, chosenAt)
                 end)
                 if not changed then
                     say(player, "Faction change denied; wait 15 minutes or dismiss conflicting companions")
@@ -196,8 +197,9 @@ function Crew.Start()
                         local profile = Profile.Read(target)
                         if not profile then continue end
                         if profile.allegiance ~= desired then
+                            local chosenAt = os.time()
                             local changed = Profile.Mutate(target, function(data)
-                                return Rules.SetAllegiance(data, desired, os.time())
+                                return Rules.SetAllegiance(data, desired, chosenAt)
                             end)
                             if not changed then
                                 say(target, "Faction cooldown or companion conflict; cannot join")
