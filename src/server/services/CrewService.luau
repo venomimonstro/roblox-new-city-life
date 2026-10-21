@@ -138,6 +138,12 @@ local function hireNpc(group: any, player: Player)
     say(player, "Contractor hired. Local influence updated.")
 end
 
+function Crew.SameCrew(a: Player, b: Player): boolean
+    if a == b then return true end
+    local left = membership[a.UserId]
+    return left ~= nil and left == membership[b.UserId]
+end
+
 function Crew.Start()
     notice = ReplicatedStorage:WaitForChild("StreetCityRemotes"):WaitForChild("GarageNotice") :: RemoteEvent
     root = Instance.new("Folder")
