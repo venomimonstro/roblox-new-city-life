@@ -176,7 +176,19 @@ function SmokeTests.Run()
         assert(checkpoint and checkpoint:IsA("BasePart") and not checkpoint.CanQuery,
             "Noncollidable checkpoint must not be a suspension contact")
     end
-    assert(world:FindFirstChild("PersonalGarageTerminal"), "Missing personal garage terminal")
+    local terminal = world:FindFirstChild("PersonalGarageTerminal")
+    assert(terminal and terminal:IsA("BasePart"), "Missing personal garage terminal")
+    assert(not terminal.CanCollide and not terminal.CanQuery,
+        "Garage terminal must not obstruct the race road")
+    local shopCount = 0
+    for _, part in world:GetChildren() do
+        if part.Name:sub(1, 5) == "Shop_" then
+            shopCount += 1
+            assert(part:IsA("BasePart") and not part.CanCollide and not part.CanQuery,
+                "Shop stand must not obstruct driving or suspension")
+        end
+    end
+    assert(shopCount >= 7, "Expected part stands, car dealer and install stand")
     local remotes = Shared.Parent:FindFirstChild("StreetCityRemotes")
     assert(remotes and remotes:FindFirstChild("GarageNotice"), "Missing shop notification event")
     assert(remotes:FindFirstChild("VehicleInput"), "Missing driving input event")
