@@ -10,19 +10,13 @@ local PersonalGarage = require(script.Parent:WaitForChild("PersonalGarage"))
 local Rules = require(ReplicatedStorage.Shared:WaitForChild("GarageTransactions"))
 local RaceValidation = require(ReplicatedStorage.Shared:WaitForChild("RaceValidation"))
 
+local Course = require(ReplicatedStorage.Shared:WaitForChild("RaceCourse"))
 local RaceService = {}
-local START = Vector3.new(0, 1, 23)
-local POINTS = {
-    Vector3.new(0, 1, 100),
-    Vector3.new(200, 1, 100),
-    Vector3.new(200, 1, -100),
-    Vector3.new(0, 1, -100),
-    Vector3.new(0, 1, 0),
-    START,
-}
-local RADIUS = 22
-local MAX_SPEED = 145 -- studs/s, deliberately generous compared with provisional chassis
-local REWARD = 650
+local START = Course.Start
+local POINTS = Course.Points
+local RADIUS = Course.CheckpointRadius
+local MAX_SPEED = Course.MaxSpeed
+local REWARD = Course.RewardCredits
 local states: {[number]: any} = {}
 local cooldown: {[number]: number} = {}
 local settling: {[number]: boolean} = {}
@@ -74,7 +68,7 @@ function RaceService.Start()
             return
         end
         local pos = car.Chassis.Position
-        if (pos - START).Magnitude > 26 then return end
+        if (pos - START).Magnitude > Course.StartRadius then return end
         cooldown[player.UserId] = now + 15
         states[player.UserId] = {
             car = car, checkpoint = 1, began = now, last = now,
@@ -133,7 +127,7 @@ function RaceService.Start()
             end
             local pos = car.Chassis.Position
             local delta = now - run.last
-            if now - run.began > 180 or delta <= 0 or not RaceValidation.PositionPlausible(run.position, pos, delta, MAX_SPEED)
+            if now - run.began > Course.MaxDurationSeconds or delta <= 0 or not RaceValidation.PositionPlausible(run.position, pos, delta, MAX_SPEED)
                 or car.Chassis.AssemblyLinearVelocity.Magnitude > MAX_SPEED then
                 cancel(player, "Race cancelled: invalid driving path")
                 continue
@@ -143,7 +137,7 @@ function RaceService.Start()
             local target = POINTS[run.checkpoint]
             if target and RaceValidation.CheckpointReached(pos, target, RADIUS) then
                 local segmentTime = now - run.checkpointAt
-                if not RaceValidation.SegmentTimePlausible(run.checkpointPosition, target, segmentTime, MAX_SPEED) then
+                if not RaceValidation.SegmentTimePlausible(run.checkpointPosition, target, segmentTime, MAX_SPEED, RADIUS) then
                     cancel(player, "Race cancelled: checkpoint reached too fast")
                     continue
                 end
