@@ -221,4 +221,40 @@ function Rules.CollectRent(profile: any, serverNow: number,
     return true
 end
 
+function Rules.SetAllegiance(profile: any, allegiance: string,
+    now: number): boolean
+    if allegiance ~= "independent" and allegiance ~= "law"
+        and allegiance ~= "outlaw" then return false end
+    if profile.allegiance == allegiance or type(now) ~= "number"
+        or now % 1 ~= 0 or now < 1000000000 or now > 5000000000
+        or type(profile.allegianceChangedAt) ~= "number"
+        or now - profile.allegianceChangedAt < 900 then return false end
+    if profile.henchmen > 0 and allegiance == "law" then return false end
+    if profile.guards > 0 and allegiance == "outlaw" then return false end
+    profile.allegiance = allegiance
+    profile.allegianceChangedAt = now
+    return true
+end
+
+function Rules.HireFollower(profile: any, role: string, operationId: string): boolean
+    local cost = if role == "guard" then 1400 elseif role == "henchman" then 1100 else 0
+    local key = if role == "guard" then "guards" else "henchmen"
+    if cost == 0 or type(profile[key]) ~= "number"
+        or profile[key] >= 3 or profile.credits < cost
+        or (role == "guard" and profile.allegiance == "outlaw")
+        or (role == "henchman" and profile.allegiance == "law") then return false end
+    if not record(profile, operationId) then return false end
+    profile.credits -= cost
+    profile[key] += 1
+    return true
+end
+
+function Rules.LoseFollower(profile: any, role: string): boolean
+    if role ~= "guard" and role ~= "henchman" then return false end
+    local key = if role == "guard" then "guards" else "henchmen"
+    if type(profile[key]) ~= "number" or profile[key] < 1 then return false end
+    profile[key] -= 1
+    return true
+end
+
 return table.freeze(Rules)
