@@ -9,6 +9,10 @@ local Powertrain = require(ReplicatedStorage.Shared:WaitForChild("Powertrain"))
 local VehicleBuild = require(ReplicatedStorage.Shared:WaitForChild("VehicleBuild"))
 
 local VehicleService = {}
+local WHEEL_OFFSETS = {
+    Vector3.new(-2.1, 0, -3.5), Vector3.new(2.1, 0, -3.5),
+    Vector3.new(-2.1, 0, 3.5), Vector3.new(2.1, 0, 3.5),
+}
 local cars: { Factory.Car } = {}
 local cooldown: { [number]: number } = {}
 local inputThrottle: { [number]: number } = {}
@@ -126,11 +130,7 @@ local function updateCar(car: Factory.Car)
     local friction = 0
     local spring = 0
     local rideLength = 4.5
-    local wheelOffsets = {
-        Vector3.new(-2.1, 0, -3.5), Vector3.new(2.1, 0, -3.5),
-        Vector3.new(-2.1, 0, 3.5), Vector3.new(2.1, 0, 3.5),
-    }
-    for _, offset in wheelOffsets do
+    for _, offset in WHEEL_OFFSETS do
         local worldPoint = root.CFrame:PointToWorldSpace(offset)
         local hit = workspace:Raycast(worldPoint, Vector3.new(0, -rideLength, 0), rayParams)
         if hit and hit.Normal.Y > 0.6 then
