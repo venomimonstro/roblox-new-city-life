@@ -23,6 +23,11 @@ local function station(parent: Instance, label: string, pos: Vector3, action: (P
     pad.Name = "Shop_" .. label
     pad.Size = Vector3.new(6, 2, 6)
     pad.Anchored = true
+    -- The shop is beside a driving route; stands must not block vehicle chassis
+    -- or become false-positive suspension ground contacts.
+    pad.CanCollide = false
+    pad.CanQuery = false
+    pad.CanTouch = false
     pad.Material = Enum.Material.Neon
     pad.Color = Color3.fromRGB(188, 133, 75)
     pad.Position = pos
