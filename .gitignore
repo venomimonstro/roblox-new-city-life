@@ -1,0 +1,14 @@
+*.rbxl
+*.rbxlx
+*.rbxm
+*.rbxmx
+.DS_Store
+.vscode/
+.idea/
+.tmp/
+dist/
+build/
+*.log
+.env
+.env.*
+!.env.example
