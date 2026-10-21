@@ -7,6 +7,7 @@ local RoadGraph = require(Shared:WaitForChild("RoadGraph"))
 local VehicleBuild = require(Shared:WaitForChild("VehicleBuild"))
 local Districts = require(Shared:WaitForChild("DistrictConfig"))
 local ProfileSchema = require(Shared:WaitForChild("ProfileSchema"))
+local Transactions = require(Shared:WaitForChild("GarageTransactions"))
 
 local SmokeTests = {}
 function SmokeTests.Run()
@@ -44,7 +45,7 @@ function SmokeTests.Run()
     assert(VehicleBuild.Resolve({engineId = "stock_i4", gearboxId = "street_5", tireId = "street", finalDrive = 0}) == nil)
     assert(VehicleBuild.Resolve({engineId = "stock_i4", gearboxId = "street_5", tireId = "street", finalDrive = 4.2}) ~= nil)
     local fresh = ProfileSchema.New()
-    assert(fresh.schemaVersion == 1 and fresh.garage.starter ~= nil)
+    assert(fresh.schemaVersion == 2 and fresh.garage.starter ~= nil)
     local decoded = ProfileSchema.Decode(fresh)
     assert(decoded and decoded.credits == 0)
     fresh.credits = -1
@@ -53,6 +54,32 @@ function SmokeTests.Run()
     invalid.garage.starter.engineId = "invalid"
     assert(ProfileSchema.Decode(invalid) == nil)
     assert(ProfileSchema.Decode({schemaVersion = 999, credits = 0, garage = {}}) == nil)
-    print("[StreetCity] PASS: baseline, district, tuning and profile schema smoke assertions")
+    local legacy = ProfileSchema.Decode({
+        schemaVersion = 1, credits = 1200,
+        garage = {starter = {engineId = "stock_i4", gearboxId = "street_5", tireId = "street"}},
+    })
+    assert(legacy and legacy.schemaVersion == 2 and legacy.selectedVehicleId == "starter")
+    local wallet = ProfileSchema.New()
+    assert(Transactions.AwardCredits(wallet, 2000, "race_test_00001"))
+    assert(not Transactions.AwardCredits(wallet, 2000, "race_test_00001"))
+    assert(wallet.credits == 2000)
+    assert(Transactions.PurchasePart(wallet, "tire_sport_new", "part_test_00001"))
+    assert(wallet.credits == 1100 and wallet.inventory.tire_sport_new == 1)
+    assert(not Transactions.PurchasePart(wallet, "tire_sport_new", "part_test_00001"))
+    assert(Transactions.InstallPart(wallet, "starter", "tire_sport_new", "install_test_00001"))
+    assert(wallet.garage.starter.tireId == "sport")
+    assert(wallet.inventory.tire_sport_new == nil)
+    assert(not Transactions.InstallPart(wallet, "starter", "tire_sport_new", "install_test_00002"))
+    assert(ProfileSchema.Decode(wallet) ~= nil)
+    wallet.credits = 25000
+    assert(Transactions.PurchaseVehicle(wallet, "street_coupe", "car_test_00001", "car_buy_00001"))
+    assert(wallet.credits == 13000)
+    assert(not Transactions.PurchaseVehicle(wallet, "street_coupe", "car_test_00001", "car_buy_00001"))
+    assert(Transactions.SelectVehicle(wallet, "car_test_00001"))
+    assert(ProfileSchema.Decode(wallet) ~= nil)
+    local badInventory = ProfileSchema.New()
+    badInventory.inventory.unknown_sku = 1
+    assert(ProfileSchema.Decode(badInventory) == nil)
+    print("[StreetCity] PASS: vehicle, map, schema migration and credit transaction assertions")
 end
 return SmokeTests
