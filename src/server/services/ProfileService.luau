@@ -179,6 +179,7 @@ function ProfileService.Save(player: Player, release: boolean): boolean
         return true
     end
     local confirmed = false
+    local confirmedData: any = nil
     local lastError: any = nil
     -- Lease renewal is safe to retry: each attempt reads the newest record
     -- and never overwrites persisted gameplay data with an in-memory snapshot.
@@ -196,14 +197,17 @@ function ProfileService.Save(player: Player, release: boolean): boolean
         confirmed = ok and type(output) == "table"
             and output.owner == (if release then nil else token)
             and Schema.Decode(output.data) ~= nil
-        if confirmed then break end
+        if confirmed then
+            confirmedData = Schema.Decode(output.data)
+            break
+        end
         lastError = if ok then "lease ownership not confirmed" else tostring(output)
         -- Do not retry after a clean ownership conflict; only transient API errors.
         if ok or attempt == 3 then break end
         task.wait(0.35 * attempt)
     end
     if confirmed then
-        profiles[id] = if release then nil else Schema.Decode(output.data)
+        profiles[id] = if release then nil else confirmedData
     end
     busy[id] = nil
     if not confirmed then warn("[StreetCity] Profile lease/save not confirmed for " .. tostring(id) .. ": " .. tostring(lastError)) end
