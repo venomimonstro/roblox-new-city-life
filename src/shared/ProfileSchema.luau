@@ -1,5 +1,5 @@
 --!strict
--- Schema V3. Decode migrates V1/V2; unknown future formats fail closed.
+-- Schema V4. Decode migrates V1/V2/V3; unknown future formats fail closed.
 local Build = require(script.Parent:WaitForChild("VehicleBuild"))
 local Vehicles = require(script.Parent:WaitForChild("VehicleCatalog"))
 local Offers = require(script.Parent:WaitForChild("ShopCatalog"))
@@ -27,12 +27,13 @@ function Schema.New(userId: number?)
         starterId = starterChoices[(userId % #starterChoices) + 1]
     end
     return {
-        schemaVersion = 3,
+        schemaVersion = 4,
         bankCredits = 0,
         stolenGoods = 0,
         nutrition = 80,
         fitness = 15,
         bodyFat = 25,
+        realEstate = {home = 1, rental = 0, shop = 0, lastRentClaim = 0},
         credits = 0,
         selectedVehicleId = "starter",
         garage = {
@@ -50,7 +51,7 @@ end
 
 function Schema.Decode(raw: any)
     if type(raw) ~= "table" then return nil end
-    if raw.schemaVersion ~= 1 and raw.schemaVersion ~= 2 and raw.schemaVersion ~= 3 then return nil end
+    if raw.schemaVersion ~= 1 and raw.schemaVersion ~= 2 and raw.schemaVersion ~= 3 and raw.schemaVersion ~= 4 then return nil end
     if not finiteInteger(raw.credits, 0, 10000000000) then return nil end
     if type(raw.garage) ~= "table" then return nil end
 
@@ -106,7 +107,7 @@ function Schema.Decode(raw: any)
     local nutrition = 80
     local fitness = 15
     local bodyFat = 25
-    if raw.schemaVersion == 3 then
+    if raw.schemaVersion >= 3 then
         if not finiteInteger(raw.bankCredits, 0, 10000000000)
             or not finiteInteger(raw.stolenGoods, 0, 20)
             or not finiteInteger(raw.nutrition, 0, 100)
@@ -118,8 +119,22 @@ function Schema.Decode(raw: any)
         fitness = raw.fitness
         bodyFat = raw.bodyFat
     end
+    local realEstate = {home = 1, rental = 0, shop = 0, lastRentClaim = 0}
+    if raw.schemaVersion == 4 then
+        local data = raw.realEstate
+        if type(data) ~= "table"
+            or not finiteInteger(data.home, 1, 3)
+            or not finiteInteger(data.rental, 0, 3)
+            or not finiteInteger(data.shop, 0, 3)
+            or not finiteInteger(data.lastRentClaim, 0, 9999999999) then return nil end
+        realEstate = {
+            home = data.home, rental = data.rental,
+            shop = data.shop, lastRentClaim = data.lastRentClaim,
+        }
+    end
     return {
-        schemaVersion = 3,
+        schemaVersion = 4,
+        realEstate = realEstate,
         bankCredits = bankCredits,
         stolenGoods = stolenGoods,
         nutrition = nutrition,
