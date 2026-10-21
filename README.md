@@ -6,7 +6,7 @@ Roblox multiplayer open-world game. **Current milestone: playable engineering pr
 
 1. Install [Roblox Studio](https://create.roblox.com/) and [Rojo 7](https://rojo.space/).
 2. Clone the repository and run \`rojo serve default.project.json\`.
-3. Open a new **Baseplate** place in Roblox Studio, install the Rojo Studio plugin, and **Connect** to the local Rojo server.
+3. Open a new **Baseplate** place in Roblox Studio, **delete its default Baseplate and SpawnLocation objects**, install the Rojo Studio plugin, and **Connect** to the local Rojo server. The prototype creates its own ground and spawn point.
 4. Press **Play**. A procedurally created test district, spawn point and a test car appear. Walk to the car and use the proximity prompt to drive. Use **L** (or the touch action) to switch headlights.
 5. For a repeatable build artifact, run \`rojo build default.project.json -o StreetCity.rbxlx\` and open it in Studio.
 
