@@ -82,11 +82,10 @@ function Health.Start()
                 local id = player.UserId
                 if os.clock() - (cooldowns[id] or 0) < 3 then return end
                 cooldowns[id] = os.clock()
+                local operation = op()
                 local succeeded = Profile.Mutate(player, function(data)
-                    return Rules.EatFood(data, food.price, food.nutrition, food.fat, op())
+                    return Rules.EatFood(data, food.price, food.nutrition, food.fat, operation)
                 end)
-                -- Generate the operation ID OUTSIDE the UpdateAsync callback
-                -- so retries do not purchase twice.
                 if succeeded then
                     applyBody(player)
                     tell(player, food.id .. " eaten: energy restored")
