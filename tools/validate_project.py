@@ -21,6 +21,7 @@ REQUIRED = (
     "src/shared/VehicleCatalog.luau",
     "src/shared/ShopCatalog.luau",
     "src/shared/ProfileSchema.luau",
+    "src/shared/ProfileMutationOutcome.luau",
     "src/shared/GarageTransactions.luau",
     "src/shared/RaceValidation.luau",
     "src/server/services/PersonalGarage.luau",
@@ -58,6 +59,15 @@ def main() -> None:
     race_position = bootstrap.find("RaceService.Start()")
     if shop_position == -1 or race_position == -1 or shop_position > race_position:
         raise SystemExit("Invalid bootstrap order: shop must initialize before races")
+
+    profile_source = (ROOT / "src/server/services/ProfileService.luau").read_text(encoding="utf-8")
+    if "MutationOutcome.Classify(" not in profile_source or "activeStore()" not in profile_source:
+        raise SystemExit("Profile safety regression: missing cancellation or lazy-store guard")
+
+    world_source = (ROOT / "src/server/services/WorldService.luau").read_text(encoding="utf-8")
+    race_source = (ROOT / "src/server/services/RaceService.luau").read_text(encoding="utf-8")
+    if "p.CanQuery = p.CanCollide" not in world_source or "marker.CanQuery = false" not in race_source:
+        raise SystemExit("Suspension safety regression: noncollidable decoration is queryable")
 
     workflows = ROOT / ".github" / "workflows"
     if workflows.exists() and any(workflows.iterdir()):
