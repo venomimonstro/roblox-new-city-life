@@ -21,6 +21,7 @@ local function part(
     p.Position = pos
     p.Anchored = true
     p.CanCollide = if collide == nil then true else collide
+    p.CanQuery = p.CanCollide -- Decorative ocean must not become raycast ground.
     p.Material = material
     p.Color = color
     p.TopSurface = Enum.SurfaceType.Smooth
