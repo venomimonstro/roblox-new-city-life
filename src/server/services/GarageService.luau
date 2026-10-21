@@ -28,12 +28,14 @@ function GarageService.Start(car: any)
     prompt.RequiresLineOfSight = false
     prompt.Parent = stand
     local busy = false
+    local activeOwner: number? = nil
     prompt.Triggered:Connect(function(player: Player)
         if busy or not player.Character then return end
         local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
         if not humanoid or humanoid.Health <= 0 then return end
         if player:DistanceFromCharacter(stand.Position) > 11 then return end
         if car.Seat.Occupant or car.Chassis.AssemblyLinearVelocity.Magnitude > 2 then return end
+        if activeOwner ~= nil and activeOwner ~= player.UserId then return end
         local nextIndex = (devIndex[player.UserId] or 1) % #presets + 1
         local build = presets[nextIndex]
         if not VehicleBuild.Resolve(build) then return end
@@ -59,11 +61,21 @@ function GarageService.Start(car: any)
             car.Model:SetAttribute("TireId", build.tireId)
             car.Model:SetAttribute("BuildName", build.name)
             devIndex[player.UserId] = nextIndex
+            activeOwner = player.UserId
+            car.Model:SetAttribute("PrototypeGarageOwnerId", player.UserId)
         end
         busy = false
     end)
     game:GetService("Players").PlayerRemoving:Connect(function(player)
         devIndex[player.UserId] = nil
+        if activeOwner == player.UserId then
+            activeOwner = nil
+            car.Model:SetAttribute("PrototypeGarageOwnerId", 0)
+            car.Model:SetAttribute("EngineId", "stock_i4")
+            car.Model:SetAttribute("GearboxId", "street_5")
+            car.Model:SetAttribute("TireId", "street")
+            car.Model:SetAttribute("BuildName", "Street")
+        end
     end)
 end
 return GarageService
