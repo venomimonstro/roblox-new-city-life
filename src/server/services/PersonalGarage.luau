@@ -13,7 +13,7 @@ local working: {[number]: boolean} = {}
 
 local function reserveSlot(userId: number): number?
     if slotByUser[userId] ~= nil then return slotByUser[userId] end
-    for slot = 0, 11 do
+    for slot = 0, 47 do
         local used = false
         for _, existing in pairs(slotByUser) do
             if existing == slot then used = true break end
@@ -27,8 +27,12 @@ local function reserveSlot(userId: number): number?
 end
 
 local function positionFor(slot: number): Vector3
-    -- On the existing west-east road; avoid the adjacent building lots.
-    return Vector3.new(-95 + 17 * slot, 4.0, -100)
+    -- 48 slots on the existing z=-200 / z=200 streets, away from race routes.
+    local row = math.floor(slot / 24)
+    local index = slot % 24
+    local side = if index % 2 == 0 then 1 else -1
+    local x = (math.floor(index / 2) + 1) * 18 * side
+    return Vector3.new(x, 4, if row == 0 then -200 else 200)
 end
 
 local function spawnSelected(player: Player): boolean
@@ -36,7 +40,10 @@ local function spawnSelected(player: Player): boolean
     local data = ProfileService.Read(player)
     if not data or not data.garage[data.selectedVehicleId] then return false end
     local slot = reserveSlot(player.UserId)
-    if slot == nil then return false end
+    if slot == nil then
+        warn("[StreetCity] Parking capacity exceeded (48 slots)")
+        return false
+    end
     local existing = active[player.UserId]
     if existing and existing.Model.Parent and existing.Seat.Occupant then return false end
     -- Create before removing prior vehicle so failed creation does not remove it.
