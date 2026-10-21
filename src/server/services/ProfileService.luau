@@ -93,13 +93,16 @@ function ProfileService.Mutate(player: Player, edit: (any) -> boolean): boolean
         if valid then emitSummary(player) end
         return valid
     end
+    local acceptedInTransform = false
     local ok, output = pcall(function()
         return store:UpdateAsync(key(player), function(old)
+            acceptedInTransform = false
             if not owned(old) then return nil end
             local candidate = Schema.Decode(old.data)
             if not candidate then return nil end
             local safe, accepted = pcall(edit, candidate)
             if not safe or accepted ~= true or not Schema.Decode(candidate) then return nil end
+            acceptedInTransform = true
             return {owner = token, leaseUntil = os.time() + LEASE, data = candidate}
         end)
     end)
@@ -109,7 +112,7 @@ function ProfileService.Mutate(player: Player, edit: (any) -> boolean): boolean
     end
     busy[id] = nil
     if not ok then warn("[StreetCity] Profile mutation failed for user " .. tostring(id)) end
-    return ok and owned(output) and profiles[id] ~= nil
+    return ok and acceptedInTransform and owned(output) and profiles[id] ~= nil
 end
 
 -- Renew/release only the most recently committed DataStore data; never overwrite
