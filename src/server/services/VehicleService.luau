@@ -54,8 +54,16 @@ local function updateCar(car: Factory.Car)
     local lateral = vel:Dot(right)
     local planar = Vector3.new(vel.X, 0, vel.Z)
 
+    local occupant = seat.Occupant
+    local player = occupant and Players:GetPlayerFromCharacter(occupant.Parent)
+    local ownerId = car.Model:GetAttribute("OwnerUserId")
+    local authorized = player ~= nil and (ownerId == nil or ownerId == player.UserId)
+    if occupant and not authorized then
+        -- Exploit-resistant even if another script seats a non-owner directly.
+        occupant.Sit = false
+    end
     local input = inputState[car.Model]
-    local live = seat.Occupant ~= nil and input ~= nil and os.clock() - input.last < 0.45
+    local live = authorized and input ~= nil and os.clock() - input.last < 0.45
     local drive = if live then input.throttle else 0
     local steer = if live then input.steer else 0
     -- Early simulation integration: gear ratios affect drive acceleration. The chassis
