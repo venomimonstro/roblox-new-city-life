@@ -12,7 +12,7 @@ local VehicleService = {}
 local cars: { Factory.Car } = {}
 local cooldown: { [number]: number } = {}
 local ownershipConnections: { RBXScriptConnection } = {}
-local driveState: { [Model]: { gear: number, rpm: number, signature: string } } = {}
+local driveState: { [Model]: { gear: number, rpm: number, signature: string, spec: any?, lastTelemetry: number } } = {}
 
 local function isDriver(player: Player, car: Factory.Car): boolean
     local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
@@ -58,26 +58,29 @@ local function updateCar(car: Factory.Car)
     local engineId = car.Model:GetAttribute("EngineId")
     local gearboxId = car.Model:GetAttribute("GearboxId")
     local tireId = car.Model:GetAttribute("TireId")
-    local spec = VehicleBuild.Resolve({
-        engineId = if type(engineId) == "string" then engineId else "stock_i4",
-        gearboxId = if type(gearboxId) == "string" then gearboxId else "street_5",
-        tireId = if type(tireId) == "string" then tireId else "street",
-    })
-    if not spec then
-        car.DriveForce.Force = Vector3.zero
-        car.YawMotor.AngularVelocity = Vector3.zero
-        return
-    end
     local state = driveState[car.Model]
     if not state then
-        state = { gear = 1, rpm = spec.idleRpm, signature = "" }
+        state = {gear = 1, rpm = 850, signature = "", spec = nil, lastTelemetry = 0}
         driveState[car.Model] = state
     end
     local signature = tostring(engineId) .. ":" .. tostring(gearboxId) .. ":" .. tostring(tireId)
     if state.signature ~= signature then
-        state.gear = 1
-        state.rpm = spec.idleRpm
+        state.spec = VehicleBuild.Resolve({
+            engineId = if type(engineId) == "string" then engineId else "stock_i4",
+            gearboxId = if type(gearboxId) == "string" then gearboxId else "street_5",
+            tireId = if type(tireId) == "string" then tireId else "street",
+        })
+        if state.spec then
+            state.gear = 1
+            state.rpm = state.spec.idleRpm
+        end
         state.signature = signature
+    end
+    local spec = state.spec
+    if not spec then
+        car.DriveForce.Force = Vector3.zero
+        car.YawMotor.AngularVelocity = Vector3.zero
+        return
     end
     local speedMps = longitudinal * 0.28
     state.rpm = Powertrain.EngineRpm(spec, state.gear, speedMps)
@@ -94,8 +97,12 @@ local function updateCar(car: Factory.Car)
         Powertrain.WheelForce(spec, state.rpm, state.gear) / 7500, 0.35, 1.65
     )
     local acceleration = if drive > 0 then baseline * powerMultiplier else baseline
-    car.Model:SetAttribute("EngineRPM", math.floor(state.rpm))
-    car.Model:SetAttribute("Gear", state.gear)
+    local telemetryTime = os.clock()
+    if telemetryTime - state.lastTelemetry >= 0.15 then
+        car.Model:SetAttribute("EngineRPM", math.floor(state.rpm))
+        car.Model:SetAttribute("Gear", state.gear)
+        state.lastTelemetry = telemetryTime
+    end
 
     local rayParams = RaycastParams.new()
     rayParams.FilterType = Enum.RaycastFilterType.Exclude
@@ -135,7 +142,7 @@ function VehicleService.SpawnForPlayer(player: Player, build: any, position: Vec
     car.Model:SetAttribute("GearboxId", build.gearboxId)
     car.Model:SetAttribute("TireId", build.tireId)
     table.insert(cars, car)
-    driveState[car.Model] = { gear = 1, rpm = 850, signature = "" }
+    driveState[car.Model] = { gear = 1, rpm = 850, signature = "", spec = nil, lastTelemetry = 0 }
     table.insert(ownershipConnections, car.Seat:GetPropertyChangedSignal("Occupant"):Connect(function()
         assignOwner(car)
     end))
@@ -173,7 +180,7 @@ function VehicleService.Start()
     car.Model:SetAttribute("GearboxId", "street_5")
     car.Model:SetAttribute("TireId", "street")
     table.insert(cars, car)
-    driveState[car.Model] = { gear = 1, rpm = 850, signature = "" }
+    driveState[car.Model] = { gear = 1, rpm = 850, signature = "", spec = nil, lastTelemetry = 0 }
     table.insert(ownershipConnections, car.Seat:GetPropertyChangedSignal("Occupant"):Connect(function()
         assignOwner(car)
     end))
