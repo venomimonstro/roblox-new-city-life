@@ -1,198 +1,163 @@
 --!strict
--- Schema V4. Decode migrates V1/V2/V3; unknown future formats fail closed.
+-- V4: backwards compatible with V1/V2/V3 and earlier V4 field sets.
+-- No module loading depends on DataStore. Invalid persisted values fail closed.
 local Build = require(script.Parent:WaitForChild("VehicleBuild"))
 local Vehicles = require(script.Parent:WaitForChild("VehicleCatalog"))
 local Offers = require(script.Parent:WaitForChild("ShopCatalog"))
 local Properties = require(script.Parent:WaitForChild("PropertyCatalog"))
 local Schema = {}
-local MAX_CARS = 8
-local MAX_ITEMS = 48
-local MAX_OPERATIONS = 40
 
-local function finiteInteger(value: any, min: number, max: number): boolean
+local function integer(value: any, minimum: number, maximum: number): boolean
     return type(value) == "number" and value == value
-        and value % 1 == 0 and value >= min and value <= max
+        and value % 1 == 0 and value >= minimum and value <= maximum
 end
 
-local function keyOk(value: any): boolean
-    return type(value) == "string" and #value >= 1 and #value <= 64
-        and string.match(value, "^[%w_%-]+$") ~= nil
+local function identifier(value: any, maxLength: number): boolean
+    return type(value) == "string" and #value >= 1 and #value <= maxLength
+        and value:match("^[%w_%-]+$") ~= nil
 end
 
 function Schema.New(userId: number?)
-    local starterChoices = {
+    local variants = {
         "starter_american_sedan", "starter_american_pickup", "starter_american_muscle",
     }
-    local starterId = "starter_hatch"
+    local catalog = "starter_hatch"
     if type(userId) == "number" and userId >= 1 and userId % 1 == 0 then
-        starterId = starterChoices[(userId % #starterChoices) + 1]
-    end
-    local communityBankCredits = 0
-    local ownedProperties = {}
-    if raw.schemaVersion == 4 then
-        if not finiteInteger(raw.communityBankCredits, 0, 10000000000)
-            or type(raw.ownedProperties) ~= "table" then return nil end
-        communityBankCredits = raw.communityBankCredits
-        local deeds = 0
-        for propertyId, deed in pairs(raw.ownedProperties) do
-            deeds += 1
-            if deeds > 7 or type(propertyId) ~= "string"
-                or Properties[propertyId] == nil
-                or type(deed) ~= "table"
-                or not finiteInteger(deed.cost, 1, 100000)
-                or type(deed.rented) ~= "boolean"
-                or not finiteInteger(deed.lastPaidAt, 0, 5000000000) then return nil end
-            ownedProperties[propertyId] = {
-                cost = deed.cost,
-                rented = deed.rented,
-                lastPaidAt = deed.lastPaidAt,
-            }
-        end
+        catalog = variants[(userId % #variants) + 1]
     end
     return {
         schemaVersion = 4,
-        communityBankCredits = communityBankCredits,
-        ownedProperties = ownedProperties,
-        bankCredits = 0,
-        stolenGoods = 0,
-        nutrition = 80,
-        fitness = 15,
-        bodyFat = 25,
+        credits = 0, bankCredits = 0, communityBankCredits = 0,
+        stolenGoods = 0, nutrition = 80, fitness = 15, bodyFat = 25,
+        allegiance = "independent", allegianceChangedAt = 0,
+        guards = 0, henchmen = 0,
         realEstate = {home = 1, rental = 0, shop = 0, lastRentClaim = 0},
-        allegiance = "independent",
-        allegianceChangedAt = 0,
-        guards = 0,
-        henchmen = 0,
-        credits = 0,
+        ownedProperties = {},
         selectedVehicleId = "starter",
         garage = {
             starter = {
-                catalogId = starterId,
-                engineId = "stock_i4",
-                gearboxId = "street_5",
-                tireId = "street",
+                catalogId = catalog, engineId = "stock_i4",
+                gearboxId = "street_5", tireId = "street",
             },
         },
-        inventory = {},
-        recentOperations = {},
+        inventory = {}, recentOperations = {},
     }
 end
 
-function Schema.Decode(raw: any)
-    if type(raw) ~= "table" then return nil end
-    if raw.schemaVersion ~= 1 and raw.schemaVersion ~= 2 and raw.schemaVersion ~= 3 and raw.schemaVersion ~= 4 and raw.schemaVersion ~= 4 then return nil end
-    if not finiteInteger(raw.credits, 0, 10000000000) then return nil end
-    if type(raw.garage) ~= "table" then return nil end
-
-    local garage = {}
+function Schema.Decode(raw: any): any?
+    if type(raw) ~= "table" or not integer(raw.schemaVersion, 1, 4)
+        or not integer(raw.credits, 0, 10000000000)
+        or type(raw.garage) ~= "table" then return nil end
+    local garage: {[string]: any} = {}
     local count = 0
     for id, vehicle in pairs(raw.garage) do
         count += 1
-        if count > MAX_CARS or not keyOk(id) or type(vehicle) ~= "table" then return nil end
-        local catalogId = if raw.schemaVersion == 1 then "starter_hatch" else vehicle.catalogId
-        if type(catalogId) ~= "string" or Vehicles[catalogId] == nil then return nil end
-        if not Build.Resolve(vehicle) then return nil end
+        if count > 8 or not identifier(id, 64) or type(vehicle) ~= "table" then return nil end
+        local catalog = if raw.schemaVersion == 1 then "starter_hatch" else vehicle.catalogId
+        if type(catalog) ~= "string" or Vehicles[catalog] == nil
+            or not Build.Resolve(vehicle) then return nil end
         garage[id] = {
-            catalogId = catalogId,
-            engineId = vehicle.engineId,
-            gearboxId = vehicle.gearboxId,
-            tireId = vehicle.tireId,
+            catalogId = catalog, engineId = vehicle.engineId,
+            gearboxId = vehicle.gearboxId, tireId = vehicle.tireId,
         }
     end
-    if garage.starter == nil then return nil end
-    local selection = if raw.schemaVersion == 1 then "starter" else raw.selectedVehicleId
-    if not keyOk(selection) or garage[selection] == nil then return nil end
+    if not garage.starter then return nil end
+    local selected = if raw.schemaVersion == 1 then "starter" else raw.selectedVehicleId
+    if not identifier(selected, 64) or not garage[selected] then return nil end
 
-    local inventory = {}
-    local operations = {}
+    local inventory: {[string]: number} = {}
+    local history: {string} = {}
     if raw.schemaVersion >= 2 then
-        if type(raw.inventory) ~= "table" or type(raw.recentOperations) ~= "table" then return nil end
+        if type(raw.inventory) ~= "table"
+            or type(raw.recentOperations) ~= "table" then return nil end
         local items = 0
-        for itemId, qty in pairs(raw.inventory) do
+        for id, quantity in pairs(raw.inventory) do
             items += 1
-            if items > MAX_ITEMS or not keyOk(itemId) or Offers[itemId] == nil
-                or not finiteInteger(qty, 1, 99) then return nil end
-            inventory[itemId] = qty
+            if items > 48 or not identifier(id, 64) or Offers[id] == nil
+                or not integer(quantity, 1, 99) then return nil end
+            inventory[id] = quantity
         end
-        -- Reject sparse arrays / dictionary fields instead of silently deleting data.
-        local opSize = #raw.recentOperations
-        local opCount = 0
-        for index in pairs(raw.recentOperations) do
-            opCount += 1
-            if type(index) ~= "number" or index % 1 ~= 0
-                or index < 1 or index > opSize then return nil end
+        local n = #raw.recentOperations
+        if n > 40 then return nil end
+        local seen: {[string]: boolean} = {}
+        local total = 0
+        for i, operation in pairs(raw.recentOperations) do
+            total += 1
+            if type(i) ~= "number" or not integer(i, 1, n)
+                or not identifier(operation, 64) or seen[operation] then return nil end
+            seen[operation] = true
         end
-        if opCount ~= opSize then return nil end
-        local seen = {}
-        if opSize > MAX_OPERATIONS then return nil end
-        for _, opId in ipairs(raw.recentOperations) do
-            if #operations >= MAX_OPERATIONS or not keyOk(opId) or seen[opId] then return nil end
-            seen[opId] = true
-            table.insert(operations, opId)
+        if total ~= n then return nil end
+        for _, operation in ipairs(raw.recentOperations) do
+            table.insert(history, operation)
         end
     end
-    local bankCredits = 0
-    local stolenGoods = 0
-    local nutrition = 80
-    local fitness = 15
-    local bodyFat = 25
+
+    local bank, loot, nutrition, fitness, fat = 0, 0, 80, 15, 25
     if raw.schemaVersion >= 3 then
-        if not finiteInteger(raw.bankCredits, 0, 10000000000)
-            or not finiteInteger(raw.stolenGoods, 0, 20)
-            or not finiteInteger(raw.nutrition, 0, 100)
-            or not finiteInteger(raw.fitness, 0, 100)
-            or not finiteInteger(raw.bodyFat, 5, 80) then return nil end
-        bankCredits = raw.bankCredits
-        stolenGoods = raw.stolenGoods
-        nutrition = raw.nutrition
-        fitness = raw.fitness
-        bodyFat = raw.bodyFat
+        if not integer(raw.bankCredits, 0, 10000000000)
+            or not integer(raw.stolenGoods, 0, 20)
+            or not integer(raw.nutrition, 0, 100)
+            or not integer(raw.fitness, 0, 100)
+            or not integer(raw.bodyFat, 5, 80) then return nil end
+        bank, loot, nutrition, fitness, fat =
+            raw.bankCredits, raw.stolenGoods, raw.nutrition, raw.fitness, raw.bodyFat
     end
-    local realEstate = {home = 1, rental = 0, shop = 0, lastRentClaim = 0}
-    if raw.schemaVersion == 4 then
-        local data = raw.realEstate
-        if type(data) ~= "table"
-            or not finiteInteger(data.home, 1, 3)
-            or not finiteInteger(data.rental, 0, 3)
-            or not finiteInteger(data.shop, 0, 3)
-            or not finiteInteger(data.lastRentClaim, 0, 9999999999) then return nil end
-        realEstate = {
-            home = data.home, rental = data.rental,
-            shop = data.shop, lastRentClaim = data.lastRentClaim,
-        }
-    end
+
+    local estate = {home = 1, rental = 0, shop = 0, lastRentClaim = 0}
+    local community = 0
+    local owned: {[string]: any} = {}
     local allegiance = "independent"
-    local allegianceChangedAt = 0
-    local guards = 0
-    local henchmen = 0
+    local changedAt, guards, henchmen = 0, 0, 0
     if raw.schemaVersion == 4 then
+        if raw.realEstate ~= nil then
+            local value = raw.realEstate
+            if type(value) ~= "table" or not integer(value.home, 1, 3)
+                or not integer(value.rental, 0, 3)
+                or not integer(value.shop, 0, 3)
+                or not integer(value.lastRentClaim, 0, 9999999999) then return nil end
+            estate = {home = value.home, rental = value.rental,
+                shop = value.shop, lastRentClaim = value.lastRentClaim}
+        end
+        if raw.communityBankCredits ~= nil then
+            if not integer(raw.communityBankCredits, 0, 10000000000) then return nil end
+            community = raw.communityBankCredits
+        end
+        if raw.ownedProperties ~= nil then
+            if type(raw.ownedProperties) ~= "table" then return nil end
+            local total = 0
+            for id, property in pairs(raw.ownedProperties) do
+                total += 1
+                if total > 7 or type(id) ~= "string" or Properties[id] == nil
+                    or type(property) ~= "table"
+                    or not integer(property.cost, 1, 100000)
+                    or type(property.rented) ~= "boolean"
+                    or not integer(property.lastPaidAt, 0, 5000000000) then return nil end
+                owned[id] = {
+                    cost = property.cost, rented = property.rented,
+                    lastPaidAt = property.lastPaidAt,
+                }
+            end
+        end
         allegiance = raw.allegiance or "independent"
-        allegianceChangedAt = raw.allegianceChangedAt or 0
+        changedAt = raw.allegianceChangedAt or 0
         guards = raw.guards or 0
         henchmen = raw.henchmen or 0
         if allegiance ~= "independent" and allegiance ~= "law"
-            and allegiance ~= "outlaw" then return nil end
-        if not finiteInteger(allegianceChangedAt, 0, 5000000000)
-            or not finiteInteger(guards, 0, 3)
-            or not finiteInteger(henchmen, 0, 3) then return nil end
+            and allegiance ~= "outlaw"
+            or not integer(changedAt, 0, 5000000000)
+            or not integer(guards, 0, 3)
+            or not integer(henchmen, 0, 3) then return nil end
     end
     return {
-        schemaVersion = 4,
-        allegiance = allegiance,
-        allegianceChangedAt = allegianceChangedAt,
-        guards = guards,
-        henchmen = henchmen,
-        realEstate = realEstate,
-        bankCredits = bankCredits,
-        stolenGoods = stolenGoods,
-        nutrition = nutrition,
-        fitness = fitness,
-        bodyFat = bodyFat,
-        credits = raw.credits,
-        selectedVehicleId = selection,
-        garage = garage,
-        inventory = inventory,
-        recentOperations = operations,
+        schemaVersion = 4, credits = raw.credits,
+        bankCredits = bank, communityBankCredits = community,
+        stolenGoods = loot, nutrition = nutrition, fitness = fitness, bodyFat = fat,
+        allegiance = allegiance, allegianceChangedAt = changedAt,
+        guards = guards, henchmen = henchmen,
+        realEstate = estate, ownedProperties = owned,
+        selectedVehicleId = selected, garage = garage,
+        inventory = inventory, recentOperations = history,
     }
 end
 
