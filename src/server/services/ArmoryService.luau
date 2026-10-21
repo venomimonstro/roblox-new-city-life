@@ -7,6 +7,8 @@ local HttpService = game:GetService("HttpService")
 local Rules = require(ReplicatedStorage.Shared:WaitForChild("GarageTransactions"))
 local Profile = require(script.Parent:WaitForChild("ProfileService"))
 local Citizens = require(script.Parent:WaitForChild("CitizenService"))
+local Wanted = require(script.Parent:WaitForChild("WantedService"))
+local Crew = require(script.Parent:WaitForChild("CrewService"))
 local Armory = {}
 
 local ITEMS = {
@@ -98,6 +100,49 @@ local function stand(parent: Instance, def: any, position: Vector3, isFree: bool
     end)
 end
 
+local function strikeWanted(player: Player, def: any): boolean
+    local char = player.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if not root or not root:IsA("BasePart") then return false end
+    local distanceLimit = math.min(def.range, 80)
+    local best: Player? = nil
+    local closest = distanceLimit
+    for _, suspect in Players:GetPlayers() do
+        if suspect == player or not Wanted.IsBountyEligible(suspect)
+            or Crew.SameCrew(player, suspect) then continue end
+        local targetChar = suspect.Character
+        local target = targetChar and targetChar:FindFirstChild("HumanoidRootPart")
+        local human = targetChar and targetChar:FindFirstChildOfClass("Humanoid")
+        if not target or not target:IsA("BasePart") or not human
+            or human.Health <= 0 then continue end
+        local from = root.Position + Vector3.new(0, 1.2, 0)
+        local offset = target.Position - from
+        local range = offset.Magnitude
+        if range < closest and range > 1
+            and root.CFrame.LookVector:Dot(offset.Unit)
+                >= (if distanceLimit < 12 then 0.35 else 0.68) then
+            local ray = RaycastParams.new()
+            ray.FilterType = Enum.RaycastFilterType.Exclude
+            ray.FilterDescendantsInstances = {char, targetChar}
+            ray.IgnoreWater = true
+            local hit = workspace:Raycast(from, offset, ray)
+            if not hit or not hit.Instance.CanCollide then
+                best, closest = suspect, range
+            end
+        end
+    end
+    if not best then return false end
+    local targetHumanoid = best.Character and best.Character:FindFirstChildOfClass("Humanoid")
+    if not targetHumanoid or targetHumanoid.Health <= 0 then return false end
+    -- Only the server can assign a bounty tag. Client sends no target, star
+    -- count, reward or damage; attack faces the current character direction.
+    targetHumanoid:SetAttribute("StreetCityBountyAttacker", player.UserId)
+    targetHumanoid:SetAttribute("StreetCityBountyHitAt", os.clock())
+    local damage = if distanceLimit < 12 then 9 else 17
+    targetHumanoid:TakeDamage(damage)
+    return true
+end
+
 function Armory.Start()
     local world = workspace:WaitForChild("StreetCityPrototypeWorld")
     local root = Instance.new("Folder")
@@ -132,6 +177,11 @@ function Armory.Start()
         local now = os.clock()
         if now - (lastAction[player.UserId] or 0) < def.delay then return end
         lastAction[player.UserId] = now
+        local hitWanted = strikeWanted(player, def)
+        if hitWanted then
+            tell(player, "Wanted suspect hit. Confirmed defeat may pay a police bounty.")
+            return
+        end
         local connected = Citizens.HitNearest(player, def.range)
         if connected then tell(player, def.name .. ": NPC reacted; police alerted") end
     end)
