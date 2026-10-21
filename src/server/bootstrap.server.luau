@@ -12,11 +12,7 @@ local RaceService = require(Services:WaitForChild("RaceService"))
 local GarageMarketplaceService = require(Services:WaitForChild("GarageMarketplaceService"))
 
 local success, err = pcall(function()
-    if not (RunService:IsStudio() and game.GameId == 0) then
-        ProfileService.Start()
-    else
-        warn("[StreetCity] Unpublished Studio place: persistence disabled")
-    end
+    ProfileService.Start() -- Uses isolated memory-only profiles in unpublished Studio
     WorldService.Start()
     DistrictService.Start()
     local testCar = VehicleService.Start()
