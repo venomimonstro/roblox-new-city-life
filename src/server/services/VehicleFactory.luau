@@ -158,4 +158,28 @@ function VehicleFactory.Create(parent: Instance, position: Vector3, heading: num
     }
 end
 
+local catalogPaint = {
+    starter_hatch = {name = "Starter Hatch Prototype", color = Color3.fromRGB(75, 158, 141)},
+    street_coupe = {name = "Street Coupe Prototype", color = Color3.fromRGB(205, 53, 63)},
+    sport_sedan = {name = "Sport Sedan Prototype", color = Color3.fromRGB(73, 119, 198)},
+}
+
+-- Visual placeholder differentiation only, not a finished vehicle body.
+-- Does not modify physics mass or collision shapes.
+function VehicleFactory.ApplyCatalog(car: Car, catalogId: string): boolean
+    local appearance = catalogPaint[catalogId]
+    if not appearance then return false end
+    car.Model.Name = appearance.name
+    car.Model:SetAttribute("VehicleCatalogId", catalogId)
+    for _, partName in {"Hood", "Rear"} do
+        local panel = car.Model:FindFirstChild(partName)
+        if panel and panel:IsA("BasePart") then
+            panel.Color = appearance.color
+        end
+    end
+    local prompt = car.Seat:FindFirstChildOfClass("ProximityPrompt")
+    if prompt then prompt.ObjectText = appearance.name end
+    return true
+end
+
 return VehicleFactory
