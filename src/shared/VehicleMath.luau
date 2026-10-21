@@ -16,6 +16,14 @@ function VehicleMath.TractionFactor(material: Enum.Material): number
     return 1
 end
 
+function VehicleMath.SpringAcceleration(compression: number, verticalSpeed: number, stiffness: number, damping: number): number
+    return math.max(0, math.clamp(compression, 0, 1) * stiffness - verticalSpeed * damping)
+end
+
+function VehicleMath.ContactTraction(contacts: number): number
+    return math.clamp(contacts / 4, 0, 1)
+end
+
 function VehicleMath.DriveAcceleration(
     throttle: number,
     longitudinalSpeed: number,
