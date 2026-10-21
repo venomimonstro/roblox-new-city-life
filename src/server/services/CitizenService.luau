@@ -133,6 +133,40 @@ local function createCitizen(parent: Instance, district: any, index: number, dis
     table.insert(actors, actor)
 end
 
+-- Cosmetic non-graphic NPC interaction. Server verifies range and line of sight;
+-- no client-provided target or damage amount is ever trusted.
+function Citizens.HitNearest(player: Player, range: number): boolean
+    local character = player.Character
+    local human = character and character:FindFirstChildOfClass("Humanoid")
+    local root = character and character:FindFirstChild("HumanoidRootPart")
+    if not human or human.Health <= 0 or not root or not root:IsA("BasePart")
+        or range < 2 or range > 85 then return false end
+    local direction = root.CFrame.LookVector
+    local best: any = nil
+    local nearest = range
+    for _, actor in actors do
+        local distance = actor.torso.Position - root.Position
+        if distance.Magnitude < nearest and distance.Magnitude > 1
+            and direction:Dot(distance.Unit) > 0.15 then
+            local params = RaycastParams.new()
+            params.FilterType = Enum.RaycastFilterType.Exclude
+            params.FilterDescendantsInstances = {character, actor.model}
+            params.IgnoreWater = true
+            local hit = workspace:Raycast(root.Position + Vector3.new(0, 1, 0),
+                distance, params)
+            if not hit or not hit.Instance.CanCollide then
+                nearest = distance.Magnitude
+                best = actor
+            end
+        end
+    end
+    if not best then return false end
+    best.pausedUntil = math.max(best.pausedUntil, os.clock() + 5)
+    best.lastHit = os.clock()
+    Wanted.AddHeat(player, 1, "stylized NPC fight")
+    return true
+end
+
 function Citizens.Start()
     local world = workspace:WaitForChild("StreetCityPrototypeWorld")
     local root = Instance.new("Folder")
