@@ -188,7 +188,22 @@ function SmokeTests.Run()
                 "Shop stand must not obstruct driving or suspension")
         end
     end
-    assert(shopCount >= 7, "Expected part stands, car dealer and install stand")
+    assert(shopCount >= 11, "Expected five purchase stands, five installation stands, and dealer")
+    for _, offerId in {"tire_worn_used", "tire_sport_new", "gearbox_sport_new",
+        "engine_sport_new", "engine_v6_used"} do
+        local install = world:FindFirstChild("Shop_Install " .. offerId)
+        assert(install and install:FindFirstChildOfClass("ProximityPrompt"),
+            "Missing explicit item installation stand: " .. offerId)
+    end
+    local locator = world:FindFirstChild("FindMyCarTerminal")
+    assert(locator and locator:IsA("BasePart")
+        and locator:FindFirstChildOfClass("ProximityPrompt"),
+        "New player cannot locate their personal car")
+    assert(not locator.CanCollide and not locator.CanQuery, "Car locator blocks physics")
+    if game:GetService("RunService"):IsStudio() and game.GameId == 0 then
+        assert(world:FindFirstChild("Shop_DEV sandbox +25000 credits"),
+            "Unpublished Studio must allow quick economy test without racing 20 times")
+    end
     local remotes = Shared.Parent:FindFirstChild("StreetCityRemotes")
     assert(remotes and remotes:FindFirstChild("GarageNotice"), "Missing shop notification event")
     assert(remotes:FindFirstChild("VehicleInput"), "Missing driving input event")
