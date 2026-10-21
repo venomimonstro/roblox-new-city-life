@@ -139,24 +139,35 @@ function ProfileService.Save(player: Player, release: boolean): boolean
         busy[id] = nil
         return true
     end
-    local ok, output = pcall(function()
-        return store:UpdateAsync(key(player), function(old)
-            if not owned(old) or not Schema.Decode(old.data) then return nil end
-            return {
-                owner = if release then nil else token,
-                leaseUntil = if release then 0 else os.time() + LEASE,
-                data = old.data,
-            }
+    local confirmed = false
+    local lastError: any = nil
+    -- Lease renewal is safe to retry: each attempt reads the newest record
+    -- and never overwrites persisted gameplay data with an in-memory snapshot.
+    for attempt = 1, 3 do
+        local ok, output = pcall(function()
+            return store:UpdateAsync(key(player), function(old)
+                if not owned(old) or not Schema.Decode(old.data) then return nil end
+                return {
+                    owner = if release then nil else token,
+                    leaseUntil = if release then 0 else os.time() + LEASE,
+                    data = old.data,
+                }
+            end)
         end)
-    end)
-    local confirmed = ok and type(output) == "table"
-        and output.owner == (if release then nil else token)
-        and Schema.Decode(output.data) ~= nil
+        confirmed = ok and type(output) == "table"
+            and output.owner == (if release then nil else token)
+            and Schema.Decode(output.data) ~= nil
+        if confirmed then break end
+        lastError = if ok then "lease ownership not confirmed" else tostring(output)
+        -- Do not retry after a clean ownership conflict; only transient API errors.
+        if ok or attempt == 3 then break end
+        task.wait(0.35 * attempt)
+    end
     if confirmed then
         profiles[id] = if release then nil else Schema.Decode(output.data)
     end
     busy[id] = nil
-    if not confirmed then warn("[StreetCity] Profile lease/save not confirmed for " .. tostring(id)) end
+    if not confirmed then warn("[StreetCity] Profile lease/save not confirmed for " .. tostring(id) .. ": " .. tostring(lastError)) end
     return confirmed
 end
 
