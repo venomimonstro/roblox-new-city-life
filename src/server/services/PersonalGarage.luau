@@ -7,6 +7,7 @@ local VehicleService = require(script.Parent:WaitForChild("VehicleService"))
 local VehicleFactory = require(script.Parent:WaitForChild("VehicleFactory"))
 local Rules = require(game:GetService("ReplicatedStorage").Shared:WaitForChild("GarageTransactions"))
 local ParkingLayout = require(game:GetService("ReplicatedStorage").Shared:WaitForChild("ParkingLayout"))
+local Housing = require(script.Parent:WaitForChild("HousingService"))
 local PersonalGarage = {}
 
 local active: {[number]: any} = {}
@@ -34,9 +35,9 @@ local function spawnSelected(player: Player): boolean
     if player.Parent ~= Players then return false end
     local data = ProfileService.Read(player)
     if not data or not data.garage[data.selectedVehicleId] then return false end
-    local slot = reserveSlot(player.UserId)
-    if slot == nil then
-        warn("[StreetCity] Parking capacity exceeded (" .. tostring(ParkingLayout.Capacity) .. " slots)")
+    local home = Housing.GetGarageSpawn(player)
+    if not home then
+        warn("[StreetCity] Residential garage not available for " .. tostring(player.UserId))
         return false
     end
     local existing = active[player.UserId]
@@ -53,17 +54,36 @@ local function spawnSelected(player: Player): boolean
         existing.Model:SetAttribute("OwnedVehicleId", data.selectedVehicleId)
         return true
     end
-    local spawnPosition = ParkingLayout.Position(slot)
-    if not spawnPosition then return false end
-    local car = VehicleService.SpawnForPlayer(player, data.garage[data.selectedVehicleId], spawnPosition)
+    local car = VehicleService.SpawnForPlayer(
+        player, data.garage[data.selectedVehicleId], home.position, home.heading
+    )
     if not car then
-        if not existing then slotByUser[player.UserId] = nil end
         return false
     end
     car.Model:SetAttribute("OwnedVehicleId", data.selectedVehicleId)
     active[player.UserId] = car
     if existing then VehicleService.Despawn(existing) end
     return true
+end
+
+function PersonalGarage.ReturnOnRespawn(player: Player)
+    local id = player.UserId
+    local car = active[id]
+    if car and car.Model.Parent then
+        local occupant = car.Seat.Occupant
+        local seatedPlayer = occupant and game:GetService("Players"):GetPlayerFromCharacter(occupant.Parent)
+        if occupant and seatedPlayer ~= player then return end
+        if occupant then occupant.Sit = false end
+        car.Chassis.AssemblyLinearVelocity = Vector3.zero
+        car.Chassis.AssemblyAngularVelocity = Vector3.zero
+        -- On death we intentionally recall an abandoned owned car, even if it
+        -- would otherwise still be moving elsewhere in the world.
+    end
+    if not car or not car.Model.Parent then
+        PersonalGarage.Refresh(player)
+    else
+        PersonalGarage.Recall(player)
+    end
 end
 
 -- Server-side recovery for cars that fell through the map or were left far
@@ -78,8 +98,8 @@ function PersonalGarage.Recall(player: Player): boolean
     if not lostBelowWorld and car.Chassis.AssemblyLinearVelocity.Magnitude > 3 then
         return false
     end
-    local slot = reserveSlot(id)
-    local pos = slot and ParkingLayout.Position(slot)
+    local home = Housing.GetGarageSpawn(player)
+    local pos = home and home.position
     if not pos then return false end
     local ray = RaycastParams.new()
     ray.FilterType = Enum.RaycastFilterType.Exclude
@@ -90,7 +110,7 @@ function PersonalGarage.Recall(player: Player): boolean
         return false
     end
     local parked = ground.Position + Vector3.new(0, 4.2, 0)
-    car.Model:PivotTo(CFrame.new(parked) * CFrame.Angles(0, math.pi / 2, 0))
+    car.Model:PivotTo(CFrame.new(parked) * CFrame.Angles(0, home.heading, 0))
     car.Chassis.AssemblyLinearVelocity = Vector3.zero
     car.Chassis.AssemblyAngularVelocity = Vector3.zero
     PersonalGarage.EnsureSynced(player)
@@ -251,6 +271,15 @@ function PersonalGarage.Start()
     if RunService:IsStudio() and game.GameId == 0 then
         warn("[StreetCity] Personal garage uses ephemeral Studio profile; no progress saved")
     end
+    Housing.SetGarageHandler(function(player)
+        PersonalGarage.Recall(player)
+        PersonalGarage.EnsureSynced(player)
+    end)
+    Housing.SetRespawnHandler(function(player)
+        -- Return the player's OWN property on death/respawn. Abandoned cars
+        -- must not permanently deprive the account of its paid vehicle.
+        PersonalGarage.ReturnOnRespawn(player)
+    end)
     createTerminal()
     createCarLocator()
     local function awaitProfile(player: Player)
