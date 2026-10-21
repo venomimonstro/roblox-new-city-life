@@ -115,9 +115,10 @@ function Shop.Start()
             return Rules.InstallPart(profile, profile.selectedVehicleId, chosen :: string, operation)
         end)
         if changed then
-            local respawned = PersonalGarage.Refresh(player)
-            notify(player, if respawned then "Part installed: " .. chosen
-                else "Part saved. Visit garage again after parking to refresh car.")
+            local refreshed = PersonalGarage.Refresh(player)
+            PersonalGarage.EnsureSynced(player)
+            notify(player, if refreshed then "Part installed: " .. chosen
+                else "Part saved; the parked car will synchronize after the driver exits.")
         else
             notify(player, "Installation denied")
         end
