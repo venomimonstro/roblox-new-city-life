@@ -22,6 +22,7 @@ local success, err = pcall(function()
     RaceService.Start()
     if RunService:IsStudio() then
         require(script.Parent:WaitForChild("dev"):WaitForChild("SmokeTests")).Run()
+        require(script.Parent:WaitForChild("dev"):WaitForChild("SimulationTests")).Run()
     end
 end)
 
