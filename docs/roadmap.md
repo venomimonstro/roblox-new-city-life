@@ -8,16 +8,16 @@ Open world **life simulator**, first release focuses on free exploration + cars 
 | --- | --- | --- | --- |
 | 00 | Repository, Rojo, Luau boundaries, docs, smoke checks | **Implemented in source** | Studio sync + local build not yet verified |
 | 01 | Character spawn, interaction, camera, 2-player session | **Partial prototype** | Studio dual-client + mobile walk |
-| 02 | Universal test car and secure headlights | **Partial prototype** | Car handling/collision/replication playtest |
+| 02 | Prototype car, headlights, validated 10Hz server vehicle inputs | **Source implemented / not playtested** | Dual-client and mobile input handling |
 | 03 | Engine RPM, torque curve, gearbox; integration with provisional chassis | **Partial source implementation** | Studio driving/dynamics test, then clutch/differential |
 | 04 | Road-graph connectivity math | **Partial source implementation** | Render/connect roads, route testing |
 | 05 | Seven district procedural blockouts and connector roads | **Source prototype** | Studio traversal, streaming and visual refinement |
 | 06 | Cube 4D creator tool, asset checker and car catalog | Planned | New car accepted only after validation |
-| 07 | Profile persistence + guarded test garage | **Partial source implementation** | Studio session-lock tests and personal vehicle spawning |
-| 08 | Catalog-backed validated tuning builds | **Domain foundation only** | Server integration, garage UI, used-parts economy |
+| 07 | Versioned personal garages, selected owned car, safe profile writes | **Source implemented / not playtested** | Dual-server DataStore leases, car lifecycle |
+| 08 | Server credit shop, new/used parts, install, garage selection | **Working-source prototype** | Real session purchase tests, improved shop UI |
 | 09 | Road graph, nearby traffic and NPC racers | Planned | Bounded perf budget |
-| 10 | PvP/PvE race routes, anti-shortcut rewards | Planned | Safe race invitation/settlement |
-| 11 | Credits, shop transactions and Robux cosmetics | Planned | No dupes, refund/receipt failure safety |
+| 10 | Server-verified solo time trial and credit reward | **Partial source implementation** | Studio checkpoints, abuse tests; PvP/NPC later |
+| 11 | In-game credit transactions and short operation journal | **Partial source implementation** | Receipt handling and Robux cosmetics deferred |
 | 12 | Polish UI/UX on PC and touch, localized strings | Planned | Usable on small Android screens |
 | 13 | Persistence failures, remote abuse, admin controls | Planned | Adversarial scenario suite |
 | 14 | Streaming, meshes, lights and concurrency optimization | Planned | Device/server profiling targets |
@@ -34,3 +34,11 @@ Property market, businesses, professions, player-to-player resale, full combat, 
 
 ## Sprint working agreement
 Every sprint must document objective, touched modules, schema changes, user-visible flow, negative scenarios and a release checklist. Stop a feature if it introduces silent data loss or exploitable rewards. No mass paid AI generation tests. No production credentials in Git.
+
+## Current cross-cutting blockers (not optional)
+- Luau compilation / Rojo build not run in this environment; runtime may contain errors.
+- Staging DataStore migration V1->V2, lease contention and crash recovery unverified.
+- Vehicle physics remains arcade chassis with cosmetic wheels; true suspension is unfinished.
+- Server driving inputs and race waypoints require real two-client/mobile tests.
+- Published experience, developer products and Robux payout paths remain unverified.
+- Seven districts are placeholders; not production-ready scenic map.
