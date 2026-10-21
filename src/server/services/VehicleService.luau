@@ -183,13 +183,13 @@ local function updateCar(car: Factory.Car)
     )
 end
 
-function VehicleService.SpawnForPlayer(player: Player, build: any, position: Vector3): Factory.Car?
+function VehicleService.SpawnForPlayer(player: Player, build: any, position: Vector3, heading: number?): Factory.Car?
     if not VehicleBuild.Resolve(build) then return nil end
     local folder = workspace:FindFirstChild("ActiveVehicles")
     if not folder then return nil end
     local success, created = pcall(function()
         -- Personal parking follows east-west streets (z=+/-200).
-        return Factory.Create(folder, position, math.pi / 2, player.UserId)
+        return Factory.Create(folder, position, heading or math.pi / 2, player.UserId)
     end)
     if not success then
         warn("[StreetCity] Vehicle creation failed: " .. tostring(created))
