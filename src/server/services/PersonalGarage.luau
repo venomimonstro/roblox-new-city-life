@@ -255,13 +255,13 @@ function PersonalGarage.Start()
     createCarLocator()
     local function awaitProfile(player: Player)
         task.spawn(function()
-            for _ = 1, 100 do
-                if player.Parent ~= Players then return end
+            -- DataStore acquisition can exceed the former fixed 50-second poll
+            -- window. Keep waiting until this player leaves or the profile loads.
+            while player.Parent == Players do
                 if ProfileService.IsLoaded(player) then
-                    PersonalGarage.Refresh(player)
-                    return
+                    if PersonalGarage.Refresh(player) then return end
                 end
-                task.wait(0.5)
+                task.wait(2)
             end
         end)
     end
