@@ -34,6 +34,10 @@ function Schema.New(userId: number?)
         fitness = 15,
         bodyFat = 25,
         realEstate = {home = 1, rental = 0, shop = 0, lastRentClaim = 0},
+        allegiance = "independent",
+        allegianceChangedAt = 0,
+        guards = 0,
+        henchmen = 0,
         credits = 0,
         selectedVehicleId = "starter",
         garage = {
@@ -132,8 +136,27 @@ function Schema.Decode(raw: any)
             shop = data.shop, lastRentClaim = data.lastRentClaim,
         }
     end
+    local allegiance = "independent"
+    local allegianceChangedAt = 0
+    local guards = 0
+    local henchmen = 0
+    if raw.schemaVersion == 4 then
+        allegiance = raw.allegiance or "independent"
+        allegianceChangedAt = raw.allegianceChangedAt or 0
+        guards = raw.guards or 0
+        henchmen = raw.henchmen or 0
+        if allegiance ~= "independent" and allegiance ~= "law"
+            and allegiance ~= "outlaw" then return nil end
+        if not finiteInteger(allegianceChangedAt, 0, 5000000000)
+            or not finiteInteger(guards, 0, 3)
+            or not finiteInteger(henchmen, 0, 3) then return nil end
+    end
     return {
         schemaVersion = 4,
+        allegiance = allegiance,
+        allegianceChangedAt = allegianceChangedAt,
+        guards = guards,
+        henchmen = henchmen,
         realEstate = realEstate,
         bankCredits = bankCredits,
         stolenGoods = stolenGoods,
