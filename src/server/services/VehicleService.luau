@@ -31,6 +31,13 @@ end
 local function assignOwner(car: Factory.Car)
     local occupant = car.Seat.Occupant
     local owner = occupant and Players:GetPlayerFromCharacter(occupant.Parent)
+    local ownerId = car.Model:GetAttribute("OwnerUserId")
+    if occupant and (not owner or (ownerId ~= nil and owner.UserId ~= ownerId)) then
+        -- Reject a direct VehicleSeat:Sit/Touch seating attempt immediately,
+        -- before this player's first vehicle input or physics tick.
+        occupant.Sit = false
+        owner = nil
+    end
     -- Deliberately server-owned until we complete authoritative race movement checks.
     -- This favors consistent behavior over client-side responsiveness.
     local ok, err = pcall(function()
