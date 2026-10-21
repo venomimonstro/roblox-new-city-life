@@ -30,6 +30,21 @@ function Contract.Validate()
     requireChild(world, "PersonalGarageTerminal", "BasePart")
     local locator = requireChild(world, "FindMyCarTerminal", "BasePart")
     requireChild(locator, "ProximityPrompt", "ProximityPrompt")
+    local propertyShops = requireChild(world, "DistrictProperties", "Folder")
+    local bankBranches = requireChild(world, "BankBranches", "Folder")
+    local crewOffices = requireChild(world, "CityCrews", "Folder")
+    local nature = requireChild(world, "CityNature", "Folder")
+    requireChild(world, "CityRealEstate", "Folder")
+    requireChild(world, "FactionRegistry", "Folder")
+    assert(#propertyShops:GetChildren() >= 49,
+        "[StreetCity Gate] Personal property markets incomplete")
+    assert(#bankBranches:GetChildren() >= 9,
+        "[StreetCity Gate] Regional banking branch network incomplete")
+    assert(#crewOffices:GetChildren() >= 10,
+        "[StreetCity Gate] Player crew recruitment offices incomplete")
+    assert(#nature:GetChildren() >= 7,
+        "[StreetCity Gate] Wildlife and nature districts incomplete")
+    requireChild(ReplicatedStorage, "StreetCityDistrictState", "RemoteEvent")
     requireChild(world, "TimeTrialStart", "BasePart")
     local jobs = requireChild(world, "CityJobs", "Folder")
     local citizens = requireChild(world, "CityPedestrians", "Folder")
