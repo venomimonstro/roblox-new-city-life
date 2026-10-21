@@ -168,8 +168,17 @@ function ProfileService.Mutate(player: Player, edit: (any) -> boolean): boolean
         end
     end
     busy[id] = nil
+    if player.Parent ~= Players then
+        -- PlayerRemoving may time out while UpdateAsync is in flight.
+        -- The late response must not resurrect an orphaned cached session.
+        if profiles[id] then
+            ProfileService.Save(player, true)
+        end
+        profiles[id] = nil
+        quarantined[id] = nil
+    end
     if not ok then warn("[StreetCity] Profile mutation failed for user " .. tostring(id)) end
-    return outcome == "committed"
+    return outcome == "committed" and player.Parent == Players
 end
 
 -- Renew/release only the most recently committed DataStore data; never overwrite
@@ -236,9 +245,15 @@ function ProfileService.Start()
         summaryThrottle[player.UserId] = nil
         local deadline = os.clock() + 10
         while busy[player.UserId] and os.clock() < deadline do task.wait(0.1) end
-        if profiles[player.UserId] then ProfileService.Save(player, true) end
-        quarantined[player.UserId] = nil
-        profiles[player.UserId] = nil
+        if not busy[player.UserId] then
+            if profiles[player.UserId] then ProfileService.Save(player, true) end
+            quarantined[player.UserId] = nil
+            profiles[player.UserId] = nil
+        else
+            -- Leave state owned by the in-flight mutation. Its completion path
+            -- will release the lease and clear this user ID.
+            quarantined[player.UserId] = true
+        end
     end)
     for _, player in Players:GetPlayers() do task.spawn(acquire, player) end
     task.spawn(function()
