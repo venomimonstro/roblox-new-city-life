@@ -120,8 +120,29 @@ local function updateCar(car: Factory.Car)
     local rayParams = RaycastParams.new()
     rayParams.FilterType = Enum.RaycastFilterType.Exclude
     rayParams.FilterDescendantsInstances = { car.Model }
-    local hit = workspace:Raycast(root.Position, Vector3.new(0, -5.5, 0), rayParams)
-    local grounded = hit ~= nil and hit.Normal.Y > 0.6
+    -- Four-point suspension approximation; contacts are computed server-side.
+    -- Cosmetic welded wheels remain until real articulated suspension is built.
+    local contacts = 0
+    local friction = 0
+    local spring = 0
+    local rideLength = 4.5
+    local wheelOffsets = {
+        Vector3.new(-2.1, 0, -3.5), Vector3.new(2.1, 0, -3.5),
+        Vector3.new(-2.1, 0, 3.5), Vector3.new(2.1, 0, 3.5),
+    }
+    for _, offset in wheelOffsets do
+        local worldPoint = root.CFrame:PointToWorldSpace(offset)
+        local hit = workspace:Raycast(worldPoint, Vector3.new(0, -rideLength, 0), rayParams)
+        if hit and hit.Normal.Y > 0.6 then
+            contacts += 1
+            friction += VehicleMath.TractionFactor(hit.Material)
+            local compression = 1 - hit.Distance / rideLength
+            spring += VehicleMath.SpringAcceleration(compression, vel.Y, 380, 18)
+        end
+    end
+    local grounded = contacts > 0
+    car.SuspensionForce.Force = Vector3.new(0,
+        math.min(root.AssemblyMass * 320, root.AssemblyMass * spring / 4), 0)
     if not grounded then
         car.DriveForce.Force = Vector3.zero
         car.YawMotor.AngularVelocity = Vector3.zero
@@ -129,7 +150,7 @@ local function updateCar(car: Factory.Car)
     end
 
     local mass = root.AssemblyMass
-    local traction = VehicleMath.TractionFactor(hit.Material)
+    local traction = (friction / contacts) * VehicleMath.ContactTraction(contacts)
     local grip = cfg.Grip * traction * (if tireId == "sport" then 1.2 elseif tireId == "worn" then 0.63 else 1)
     -- Dynamic lateral/longitudinal damping remains bound by the same acceleration envelope.
     car.DriveForce.Force = mass * (
@@ -171,6 +192,7 @@ function VehicleService.Despawn(car: Factory.Car)
         if entry == car then table.remove(cars, i) break end
     end
     driveState[car.Model] = nil
+    car.SuspensionForce.Force = Vector3.zero
     inputState[car.Model] = nil
     car.Model:Destroy()
 end
