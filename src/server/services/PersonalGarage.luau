@@ -11,6 +11,7 @@ local PersonalGarage = {}
 local active: {[number]: any} = {}
 local slotByUser: {[number]: number} = {}
 local working: {[number]: boolean} = {}
+local pendingSync: {[number]: boolean} = {}
 
 local function reserveSlot(userId: number): number?
     if slotByUser[userId] ~= nil then return slotByUser[userId] end
@@ -79,6 +80,34 @@ function PersonalGarage.Refresh(player: Player): boolean
     return result == true
 end
 
+-- Retry a persisted selection/tune after the player parks and exits.
+-- A concurrent seat transition must not make the saved car permanently stale.
+function PersonalGarage.EnsureSynced(player: Player)
+    local id = player.UserId
+    if pendingSync[id] then return end
+    pendingSync[id] = true
+    task.spawn(function()
+        for _ = 1, 40 do
+            if player.Parent ~= Players or not ProfileService.IsLoaded(player) then break end
+            local profile = ProfileService.Read(player)
+            local car = active[id]
+            if not profile then break end
+            local selected = profile.garage[profile.selectedVehicleId]
+            if not selected then break end
+            if car and car.Model.Parent
+                and car.Model:GetAttribute("OwnedVehicleId") == profile.selectedVehicleId
+                and car.Model:GetAttribute("EngineId") == selected.engineId
+                and car.Model:GetAttribute("GearboxId") == selected.gearboxId
+                and car.Model:GetAttribute("TireId") == selected.tireId then
+                break
+            end
+            if not working[id] and PersonalGarage.Refresh(player) then break end
+            task.wait(0.5)
+        end
+        pendingSync[id] = nil
+    end)
+end
+
 local function createTerminal()
     local root = workspace:WaitForChild("StreetCityPrototypeWorld")
     local station = Instance.new("Part")
@@ -119,8 +148,9 @@ local function createTerminal()
             end)
             if selected and player.Parent == Players then
                 if not spawnSelected(player) then
-                    warn("[StreetCity] Garage selection saved but active car not updated")
+                    warn("[StreetCity] Garage selection saved; deferred car sync until parked")
                 end
+                PersonalGarage.EnsureSynced(player)
             end
         end)
         working[player.UserId] = nil
@@ -155,6 +185,7 @@ function PersonalGarage.Start()
         active[id] = nil
         slotByUser[id] = nil
         working[id] = nil
+        pendingSync[id] = nil
         if car then VehicleService.Despawn(car) end
     end)
 end
