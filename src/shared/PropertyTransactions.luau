@@ -40,14 +40,15 @@ function Rules.SellToCity(profile: any, id: string, opId: string): boolean
     return true
 end
 
-function Rules.SetRental(profile: any, id: string, rented: boolean): boolean
+function Rules.SetRental(profile: any, id: string, rented: boolean, now: number): boolean
     local deed = profile.ownedProperties[id]
     if not Properties[id] or not deed or type(rented) ~= "boolean"
-        or deed.rented == rented then return false end
+        or deed.rented == rented or type(now) ~= "number" or now % 1 ~= 0
+        or now < 0 then return false end
     deed.rented = rented
     if rented then
         -- First rental requires a real elapsed lease period; no immediate payout.
-        deed.lastPaidAt = os.time()
+        deed.lastPaidAt = now
     end
     return true
 end
