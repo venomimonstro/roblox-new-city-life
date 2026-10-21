@@ -140,6 +140,17 @@ function SmokeTests.Run()
     local world = workspace:FindFirstChild("StreetCityPrototypeWorld")
     assert(world and world:FindFirstChild("DistrictBlockouts"), "Missing generated districts")
     assert(world:FindFirstChild("PlayerSpawn"), "Missing player spawn")
+    local ocean = world:FindFirstChild("Ocean")
+    assert(ocean and ocean:IsA("BasePart") and not ocean.CanQuery,
+        "Ocean decoration must not affect suspension raycasts")
+    local raceStart = world:FindFirstChild("TimeTrialStart")
+    assert(raceStart and raceStart:IsA("BasePart") and not raceStart.CanQuery,
+        "Race marker must not affect suspension raycasts")
+    for i = 1, 6 do
+        local checkpoint = world:FindFirstChild("CircuitCheckpoint_" .. i)
+        assert(checkpoint and checkpoint:IsA("BasePart") and not checkpoint.CanQuery,
+            "Noncollidable checkpoint must not be a suspension contact")
+    end
     assert(world:FindFirstChild("PersonalGarageTerminal"), "Missing personal garage terminal")
     local remotes = Shared.Parent:FindFirstChild("StreetCityRemotes")
     assert(remotes and remotes:FindFirstChild("GarageNotice"), "Missing shop notification event")
