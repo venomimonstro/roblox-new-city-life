@@ -2,6 +2,7 @@
 -- Server-owned, fail-closed profile persistence. All edits execute INSIDE UpdateAsync.
 -- Edit callbacks must be pure, synchronous and safe to re-execute on retries.
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local DataStoreService = game:GetService("DataStoreService")
 local HttpService = game:GetService("HttpService")
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
@@ -15,6 +16,7 @@ local profiles: {[number]: any} = {}
 local loading: {[number]: boolean} = {}
 local busy: {[number]: boolean} = {}
 local closing = false
+local sandbox = RunService:IsStudio() and game.GameId == 0
 local stateRemote: RemoteEvent? = nil
 local summaryThrottle: {[number]: number} = {}
 
@@ -38,6 +40,12 @@ local function acquire(player: Player)
     local id = player.UserId
     if loading[id] or profiles[id] then return end
     loading[id] = true
+    if sandbox then
+        profiles[id] = Schema.New()
+        loading[id] = nil
+        emitSummary(player)
+        return
+    end
     local ok, output = pcall(function()
         return store:UpdateAsync(key(player), function(old)
             if old ~= nil and type(old) ~= "table" then return nil end
@@ -76,6 +84,15 @@ function ProfileService.Mutate(player: Player, edit: (any) -> boolean): boolean
     local id = player.UserId
     if closing or player.Parent ~= Players or not profiles[id] or busy[id] then return false end
     busy[id] = true
+    if sandbox then
+        local candidate = Schema.Decode(profiles[id])
+        local safe, accepted = pcall(edit, candidate)
+        local valid = safe and accepted == true and candidate ~= nil and Schema.Decode(candidate) ~= nil
+        if valid then profiles[id] = Schema.Decode(candidate) end
+        busy[id] = nil
+        if valid then emitSummary(player) end
+        return valid
+    end
     local ok, output = pcall(function()
         return store:UpdateAsync(key(player), function(old)
             if not owned(old) then return nil end
@@ -101,6 +118,11 @@ function ProfileService.Save(player: Player, release: boolean): boolean
     local id = player.UserId
     if not profiles[id] or busy[id] then return false end
     busy[id] = true
+    if sandbox then
+        if release then profiles[id] = nil end
+        busy[id] = nil
+        return true
+    end
     local ok, output = pcall(function()
         return store:UpdateAsync(key(player), function(old)
             if not owned(old) or not Schema.Decode(old.data) then return nil end
@@ -123,6 +145,7 @@ function ProfileService.Save(player: Player, release: boolean): boolean
 end
 
 function ProfileService.Start()
+    if sandbox then warn("[StreetCity] LOCAL SANDBOX: profile is temporary, not persisted") end
     stateRemote = Instance.new("RemoteEvent")
     stateRemote.Name = "StreetCityProfileState"
     stateRemote.Parent = game:GetService("ReplicatedStorage")
