@@ -87,4 +87,68 @@ function Rules.AwardCredits(profile: any, amount: number, operationId: string): 
     return true
 end
 
+-- Wallet vs secured bank. Server supplies fixed transfer amount; never
+-- client-reported balances. Repeated UpdateAsync callbacks see new snapshots.
+function Rules.TransferBank(profile: any, amount: number, deposit: boolean, operationId: string): boolean
+    if type(deposit) ~= "boolean" or type(amount) ~= "number"
+        or amount % 1 ~= 0 or amount < 1 or amount > 2000 then return false end
+    if type(profile.bankCredits) ~= "number" then return false end
+    if deposit then
+        if profile.credits < amount or profile.bankCredits + amount > 10000000000 then return false end
+    elseif profile.bankCredits < amount or profile.credits + amount > 10000000000 then
+        return false
+    end
+    if not record(profile, operationId) then return false end
+    profile.credits += if deposit then -amount else amount
+    profile.bankCredits += if deposit then amount else -amount
+    return true
+end
+
+-- Loot is merchandise, not spendable cash. A fence must pay for it separately.
+function Rules.StealGoods(profile: any, units: number, operationId: string): boolean
+    if type(units) ~= "number" or units % 1 ~= 0
+        or units < 1 or units > 4 or type(profile.stolenGoods) ~= "number"
+        or profile.stolenGoods + units > 20 then return false end
+    if not record(profile, operationId) then return false end
+    profile.stolenGoods += units
+    return true
+end
+
+function Rules.FenceGoods(profile: any, units: number, operationId: string): boolean
+    if type(units) ~= "number" or units % 1 ~= 0 or units < 1 or units > 10
+        or type(profile.stolenGoods) ~= "number" or profile.stolenGoods < units
+        or profile.credits + units * 180 > 10000000000 then return false end
+    if not record(profile, operationId) then return false end
+    profile.stolenGoods -= units
+    profile.credits += units * 180
+    return true
+end
+
+function Rules.EatFood(profile: any, price: number, nutrition: number, fat: number,
+    operationId: string): boolean
+    if type(price) ~= "number" or price % 1 ~= 0 or price < 1 or price > 200
+        or type(nutrition) ~= "number" or nutrition % 1 ~= 0
+        or nutrition < 1 or nutrition > 40 or fat < 0 or fat > 10
+        or profile.credits < price or type(profile.nutrition) ~= "number"
+        or type(profile.bodyFat) ~= "number" then return false end
+    if not record(profile, operationId) then return false end
+    profile.credits -= price
+    profile.nutrition = math.clamp(profile.nutrition + nutrition, 0, 100)
+    profile.bodyFat = math.clamp(profile.bodyFat + fat, 5, 80)
+    return true
+end
+
+function Rules.Workout(profile: any, gain: number, operationId: string): boolean
+    if type(gain) ~= "number" or gain % 1 ~= 0
+        or gain < 1 or gain > 6 or type(profile.fitness) ~= "number"
+        or type(profile.bodyFat) ~= "number"
+        or type(profile.nutrition) ~= "number"
+        or profile.nutrition < 5 then return false end
+    if not record(profile, operationId) then return false end
+    profile.fitness = math.clamp(profile.fitness + gain, 0, 100)
+    profile.bodyFat = math.clamp(profile.bodyFat - 1, 5, 80)
+    profile.nutrition = math.max(0, profile.nutrition - 5)
+    return true
+end
+
 return table.freeze(Rules)
