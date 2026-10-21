@@ -8,6 +8,8 @@ local Profile = require(script.Parent:WaitForChild("ProfileService"))
 local Rules = require(ReplicatedStorage.Shared:WaitForChild("GarageTransactions"))
 local VehicleService = require(script.Parent:WaitForChild("VehicleService"))
 local Wanted = require(script.Parent:WaitForChild("WantedService"))
+local Society = require(script.Parent:WaitForChild("DistrictSocietyService"))
+local Dynamics = require(ReplicatedStorage.Shared:WaitForChild("DistrictDynamics"))
 local Crime = {}
 local notice: RemoteEvent
 local cooldowns: {[string]: number} = {}
@@ -109,6 +111,11 @@ function Crime.Start()
                 local key = tostring(player.UserId) .. ":bank"
                 if os.clock() - (cooldowns[key] or 0) < 1.5 then return end
                 cooldowns[key] = os.clock()
+                local economy = Society.StateFor(bank.pos)
+                if bank.deposit and economy and not Dynamics.BankOperating(economy) then
+                    notify(player, "Branch under financial administration; deposits paused")
+                    return
+                end
                 local op = actionId("bank")
                 local ok = Profile.Mutate(player, function(account)
                     return Rules.TransferBank(account, bank.amount, bank.deposit, op)
@@ -116,6 +123,35 @@ function Crime.Start()
                 notify(player, if ok then "Bank transaction confirmed"
                     else "Insufficient cash/bank balance or unavailable")
             end)
+    end
+
+    -- Separate branded branches share a protected customer escrow ledger.
+    -- A bankrupt *branch* temporarily stops accepting deposits, but cannot
+    -- erase a player's insured bankCredits. Withdrawals stay possible elsewhere.
+    for _, branch in {
+        {id="Civic", pos=Vector3.new(920, 2, -310), amount=500},
+        {id="Industrial", pos=Vector3.new(-820, 2, 810), amount=1000},
+        {id="Private", pos=Vector3.new(520, 2, -1250), amount=2000},
+    } do
+        for _, deposit in {true, false} do
+            stand(root, "Bank_" .. branch.id .. (if deposit then "_Deposit" else "_Withdraw"),
+                branch.pos + Vector3.new(if deposit then -6 else 6, 0, 0),
+                branch.id .. " District Bank",
+                (if deposit then "Deposit " else "Withdraw ") .. branch.amount,
+                Color3.fromRGB(52, 122, 176), function(player)
+                    local economy = Society.StateFor(branch.pos)
+                    if deposit and economy and not Dynamics.BankOperating(economy) then
+                        notify(player, "Branch closed from district financial instability")
+                        return
+                    end
+                    local operation = actionId("bank")
+                    local ok = Profile.Mutate(player, function(account)
+                        return Rules.TransferBank(account, branch.amount, deposit, operation)
+                    end)
+                    notify(player, if ok then "Insured account transfer confirmed"
+                        else "Insufficient balance or service unavailable")
+                end)
+        end
     end
 
     stand(root, "FenceGoods", Vector3.new(-165, 2, -155), "Backstreet Fence",
