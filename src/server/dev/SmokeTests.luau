@@ -9,6 +9,7 @@ local Districts = require(Shared:WaitForChild("DistrictConfig"))
 local ProfileSchema = require(Shared:WaitForChild("ProfileSchema"))
 local Transactions = require(Shared:WaitForChild("GarageTransactions"))
 local RaceValidation = require(Shared:WaitForChild("RaceValidation"))
+local AssetValidator = require(script.Parent.Parent:WaitForChild("services"):WaitForChild("ModelAssetValidator"))
 
 local SmokeTests = {}
 function SmokeTests.Run()
@@ -98,6 +99,18 @@ function SmokeTests.Run()
     assert(noCredit.credits == 0 and noCredit.inventory.engine_sport_new == nil)
     assert(not Transactions.PurchaseVehicle(noCredit, "street_coupe", "car_unpaid_0001", "unpaid_car_0001"))
     assert(noCredit.credits == 0 and noCredit.garage.car_unpaid_0001 == nil)
-    print("[StreetCity] PASS: domain smoke assertions incl race validation, economy and migration")
+    local safeModel = Instance.new("Model")
+    local safePart = Instance.new("Part")
+    safePart.Size = Vector3.new(5, 2, 9)
+    safePart.Parent = safeModel
+    assert(AssetValidator.Validate(safeModel).ok)
+    local executable = Instance.new("Script")
+    executable.Parent = safeModel
+    assert(not AssetValidator.Validate(safeModel).ok)
+    executable:Destroy()
+    safePart.Size = Vector3.new(60, 2, 9)
+    assert(not AssetValidator.Validate(safeModel).ok)
+    safeModel:Destroy()
+    print("[StreetCity] PASS: domain smoke assertions incl race, economy, asset import and migration")
 end
 return SmokeTests
