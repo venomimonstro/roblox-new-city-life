@@ -26,6 +26,27 @@ REQUIRED = (
     "src/shared/GarageTransactions.luau",
     "src/shared/RaceValidation.luau",
     "src/shared/RaceCourse.luau",
+    "src/shared/DistrictDynamics.luau",
+    "src/shared/PropertyCatalog.luau",
+    "src/shared/PropertyTransactions.luau",
+    "src/shared/HomeLayout.luau",
+    "src/server/services/DistrictSocietyService.luau",
+    "src/server/services/PropertyService.luau",
+    "src/server/services/PropertyMarketService.luau",
+    "src/server/services/CrewService.luau",
+    "src/server/services/BankNetworkService.luau",
+    "src/server/services/NatureService.luau",
+    "src/server/services/HousingService.luau",
+    "src/server/services/WeatherService.luau",
+    "src/server/services/TrafficService.luau",
+    "src/server/services/LifestyleService.luau",
+    "src/server/services/CityJobsService.luau",
+    "src/server/services/CitizenService.luau",
+    "src/server/services/WantedService.luau",
+    "src/server/services/CrimeEconomyService.luau",
+    "src/server/services/ArmoryService.luau",
+    "src/server/dev/CityLifeTests.luau",
+    "src/server/dev/DistrictEconomyTests.luau",
     "src/server/dev/ScenarioTests.luau",
     "src/server/dev/SimulationTests.luau",
     "src/server/services/PersonalGarage.luau",
@@ -144,7 +165,7 @@ def main() -> None:
     factory_source = (ROOT / "src/server/services/VehicleFactory.luau").read_text(encoding="utf-8")
     if 'model:SetAttribute("OwnerUserId", ownerUserId)' not in factory_source:
         raise SystemExit("P0: vehicle owner not assigned before public parenting")
-    if 'Factory.Create(folder, position, math.pi / 2, player.UserId)' not in vehicle:
+    if 'Factory.Create(folder, position, heading or math.pi / 2, player.UserId)' not in vehicle:
         raise SystemExit("P0: personal vehicle creation lacks ownership")
 
     if "local function activeStore()" not in profile_source or "for attempt = 1, 8 do" not in profile_source:
@@ -152,7 +173,7 @@ def main() -> None:
 
     district = (ROOT / "src/server/services/DistrictService.luau").read_text(encoding="utf-8")
     smoke = (ROOT / "src/server/dev/SmokeTests.luau").read_text(encoding="utf-8")
-    if "Building_" not in district or "math.round(offsetX / 100)" not in smoke:
+    if "Building_" not in district or "math.round(part.Position.X / 100)" not in smoke:
         raise SystemExit("P0: city traffic lanes must be checked for building overlap")
     if "+ ((n - 1) % 4 - 1.5) * 100 + 25" in district:
         raise SystemExit("P0: old city building offsets obstruct the road grid")
@@ -160,6 +181,23 @@ def main() -> None:
     legacy_world = (ROOT / "src/server/services/WorldService.luau").read_text(encoding="utf-8")
     if "for x = -2, 1 do" in legacy_world:
         raise SystemExit("P0: duplicate downtown building generator reintroduced")
+
+    profile_schema = (ROOT / "src/shared/ProfileSchema.luau").read_text(encoding="utf-8")
+    if "raw.schemaVersion == 4 then" in profile_schema.split("function Schema.New")[1].split("function Schema.Decode")[0]:
+        raise SystemExit("P0: constructor references nonexistent raw saved data")
+    for field in ("communityBankCredits", "ownedProperties", "realEstate",
+                  "allegiance", "guards", "henchmen"):
+        if field not in profile_schema:
+            raise SystemExit("P0: profile V4 missing persistent field " + field)
+    for module in ("DistrictSocietyService", "CrewService", "PropertyService",
+                   "BankNetworkService", "NatureService"):
+        if module + ".Start()" not in bootstrap:
+            raise SystemExit("P0: gameplay service not initialized: " + module)
+    if 'WaitForChild("DistrictEconomyTests")).Run()' not in bootstrap:
+        raise SystemExit("New economy migrations and land-price tests not wired")
+    properties = (ROOT / "src/shared/PropertyTransactions.luau").read_text(encoding="utf-8")
+    if 'profile.credits -= quotedPrice' not in properties:
+        raise SystemExit("P0: property purchases cannot pay more than 2000 credits")
 
     workflows = ROOT / ".github" / "workflows"
     if workflows.exists() and any(workflows.iterdir()):
