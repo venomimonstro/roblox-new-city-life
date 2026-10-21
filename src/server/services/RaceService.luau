@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ProfileService = require(script.Parent:WaitForChild("ProfileService"))
 local PersonalGarage = require(script.Parent:WaitForChild("PersonalGarage"))
 local Rules = require(ReplicatedStorage.Shared:WaitForChild("GarageTransactions"))
+local RaceValidation = require(ReplicatedStorage.Shared:WaitForChild("RaceValidation"))
 
 local RaceService = {}
 local START = Vector3.new(0, 1, 23)
@@ -112,7 +113,7 @@ function RaceService.Start()
             end
             local pos = car.Chassis.Position
             local delta = now - run.last
-            if now - run.began > 180 or delta <= 0 or (pos - run.position).Magnitude > MAX_SPEED * delta + 10
+            if now - run.began > 180 or delta <= 0 or not RaceValidation.PositionPlausible(run.position, pos, delta, MAX_SPEED)
                 or car.Chassis.AssemblyLinearVelocity.Magnitude > MAX_SPEED then
                 cancel(player, "Race cancelled: invalid driving path")
                 continue
@@ -120,10 +121,9 @@ function RaceService.Start()
             run.last = now
             run.position = pos
             local target = POINTS[run.checkpoint]
-            if target and (pos - target).Magnitude <= RADIUS then
-                local segmentLength = (target - run.checkpointPosition).Magnitude
+            if target and RaceValidation.CheckpointReached(pos, target, RADIUS) then
                 local segmentTime = now - run.checkpointAt
-                if segmentTime < segmentLength / MAX_SPEED then
+                if not RaceValidation.SegmentTimePlausible(run.checkpointPosition, target, segmentTime, MAX_SPEED) then
                     cancel(player, "Race cancelled: checkpoint reached too fast")
                     continue
                 end
