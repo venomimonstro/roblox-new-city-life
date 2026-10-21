@@ -13,7 +13,9 @@ local lastAction: {[number]: number} = {}
 local notice: RemoteEvent
 
 local function notify(player: Player, message: string)
-    notice:FireClient(player, message)
+    if player.Parent == Players and notice then
+        notice:FireClient(player, message)
+    end
 end
 
 local function station(parent: Instance, label: string, pos: Vector3, action: (Player) -> ())
@@ -108,9 +110,12 @@ function Shop.Start()
             return Rules.InstallPart(profile, profile.selectedVehicleId, chosen :: string, operation)
         end)
         if changed then
-            PersonalGarage.Refresh(player)
+            local respawned = PersonalGarage.Refresh(player)
+            notify(player, if respawned then "Part installed: " .. chosen
+                else "Part saved. Visit garage again after parking to refresh car.")
+        else
+            notify(player, "Installation denied")
         end
-        notify(player, if changed then "Part installed: " .. chosen else "Installation denied")
     end)
 
     Players.PlayerRemoving:Connect(function(player)
