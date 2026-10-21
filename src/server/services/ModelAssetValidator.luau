@@ -3,11 +3,17 @@
 local Validator = {}
 export type Result = {ok: boolean, reason: string, parts: number}
 
+local PASSIVE_CLASSES: {[string]: boolean} = {
+    Model = true, Part = true, MeshPart = true, UnionOperation = true,
+    WedgePart = true, CornerWedgePart = true,
+    Attachment = true, WeldConstraint = true, Motor6D = true,
+    SpecialMesh = true, Decal = true, Texture = true, SurfaceAppearance = true,
+}
+
 local function allowed(node: Instance): boolean
-    return node:IsA("Model") or node:IsA("BasePart") or node:IsA("Attachment")
-        or node:IsA("WeldConstraint") or node:IsA("Motor6D")
-        or node:IsA("SpecialMesh") or node:IsA("Decal")
-        or node:IsA("Texture") or node:IsA("SurfaceAppearance")
+    -- ClassName (not IsA(BasePart)): prevent VehicleSeat, Seat, SpawnLocation
+    -- and other behaviorful BasePart subclasses from entering imported assets.
+    return PASSIVE_CLASSES[node.ClassName] == true
 end
 
 local function reasonable(n: number, max: number): boolean
