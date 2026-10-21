@@ -7,6 +7,8 @@ local VehicleMath = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChil
 local Factory = require(script.Parent:WaitForChild("VehicleFactory"))
 local Powertrain = require(ReplicatedStorage.Shared:WaitForChild("Powertrain"))
 local VehicleBuild = require(ReplicatedStorage.Shared:WaitForChild("VehicleBuild"))
+local VehicleCatalog = require(ReplicatedStorage.Shared:WaitForChild("VehicleCatalog"))
+local Wanted = require(script.Parent:WaitForChild("WantedService"))
 
 local VehicleService = {}
 local WHEEL_OFFSETS = {
@@ -32,6 +34,11 @@ local function assignOwner(car: Factory.Car)
     local occupant = car.Seat.Occupant
     local owner = occupant and Players:GetPlayerFromCharacter(occupant.Parent)
     local ownerId = car.Model:GetAttribute("OwnerUserId")
+    if owner and ownerId == nil and car.Model:GetAttribute("TrafficNPC") == true then
+        car.Model:SetAttribute("TrafficNPC", false)
+        car.Model:SetAttribute("StolenVehicle", true)
+        Wanted.AddHeat(owner, 1, "vehicle theft")
+    end
     if occupant and (not owner or (ownerId ~= nil and owner.UserId ~= ownerId)) then
         -- Reject a direct VehicleSeat:Sit/Touch seating attempt immediately,
         -- before this player's first vehicle input or physics tick.
@@ -76,7 +83,9 @@ local function updateCar(car: Factory.Car)
         occupant.Sit = false
     end
     local input = inputState[car.Model]
-    local live = authorized and input ~= nil and os.clock() - input.last < 0.45
+    local npcDriving = occupant == nil and car.Model:GetAttribute("TrafficNPC") == true
+    local live = (authorized or npcDriving) and input ~= nil
+        and os.clock() - input.last < (if npcDriving then 0.8 else 0.45)
     local drive = if live then input.throttle else 0
     local steer = if live then input.steer else 0
     -- Early simulation integration: gear ratios affect drive acceleration. The chassis
@@ -207,6 +216,45 @@ function VehicleService.SpawnForPlayer(player: Player, build: any, position: Vec
     end)
     assignOwner(car)
     return car
+end
+
+function VehicleService.SpawnTrafficVehicle(catalogId: string, position: Vector3,
+    heading: number, isPolice: boolean?): Factory.Car?
+    local build = VehicleCatalog[catalogId]
+    if not build then return nil end
+    local folder = workspace:FindFirstChild("ActiveVehicles")
+    if not folder then return nil end
+    local safe, result = pcall(function()
+        return Factory.Create(folder, position, heading, if isPolice then -1 else nil)
+    end)
+    if not safe then
+        warn("[StreetCity] Ambient traffic spawn failed: " .. tostring(result))
+        return nil
+    end
+    local car: Factory.Car = result
+    Factory.ApplyCatalog(car, catalogId)
+    car.Model:SetAttribute("EngineId", build.engineId)
+    car.Model:SetAttribute("GearboxId", build.gearboxId)
+    car.Model:SetAttribute("TireId", build.tireId)
+    car.Model:SetAttribute("TrafficNPC", true)
+    car.Model:SetAttribute("IsPolice", isPolice == true)
+    table.insert(cars, car)
+    driveState[car.Model] = {gear = 1, rpm = 850, signature = "", spec = nil, lastTelemetry = 0}
+    ownershipConnections[car.Model] = car.Seat:GetPropertyChangedSignal("Occupant"):Connect(function()
+        assignOwner(car)
+    end)
+    assignOwner(car)
+    return car
+end
+
+function VehicleService.SetTrafficControls(car: Factory.Car, throttle: number, steer: number)
+    if car.Model.Parent == nil or car.Model:GetAttribute("TrafficNPC") ~= true
+        or car.Seat.Occupant then return end
+    inputState[car.Model] = {
+        throttle = math.clamp(throttle, -1, 1),
+        steer = math.clamp(steer, -1, 1),
+        last = os.clock(),
+    }
 end
 
 function VehicleService.Despawn(car: Factory.Car)
