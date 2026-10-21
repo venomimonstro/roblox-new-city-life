@@ -18,6 +18,7 @@ local cooldown: { [number]: number } = {}
 local inputThrottle: { [number]: number } = {}
 local inputState: { [Model]: { throttle: number, steer: number, last: number } } = {}
 local ownershipConnections: { [Model]: RBXScriptConnection } = {}
+local raycastCache: {[Model]: RaycastParams} = {}
 local driveState: { [Model]: { gear: number, rpm: number, signature: string, spec: any?, lastTelemetry: number } } = {}
 
 local function isDriver(player: Player, car: Factory.Car): boolean
@@ -121,10 +122,14 @@ local function updateCar(car: Factory.Car)
         state.lastTelemetry = telemetryTime
     end
 
-    local rayParams = RaycastParams.new()
-    rayParams.FilterType = Enum.RaycastFilterType.Exclude
-    rayParams.FilterDescendantsInstances = { car.Model }
-    rayParams.IgnoreWater = true
+    local rayParams = raycastCache[car.Model]
+    if not rayParams then
+        rayParams = RaycastParams.new()
+        rayParams.FilterType = Enum.RaycastFilterType.Exclude
+        rayParams.FilterDescendantsInstances = {car.Model}
+        rayParams.IgnoreWater = true
+        raycastCache[car.Model] = rayParams
+    end
     -- Four-point suspension approximation; contacts are computed server-side.
     -- Cosmetic welded wheels remain until real articulated suspension is built.
     local contacts = 0
@@ -197,6 +202,7 @@ function VehicleService.Despawn(car: Factory.Car)
     driveState[car.Model] = nil
     car.SuspensionForce.Force = Vector3.zero
     inputState[car.Model] = nil
+    raycastCache[car.Model] = nil
     car.Model:Destroy()
 end
 
