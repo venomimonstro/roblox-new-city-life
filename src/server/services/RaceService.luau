@@ -25,6 +25,7 @@ local MAX_SPEED = 145 -- studs/s, deliberately generous compared with provisiona
 local REWARD = 650
 local states: {[number]: any} = {}
 local cooldown: {[number]: number} = {}
+local settling: {[number]: boolean} = {}
 local notice: RemoteEvent
 
 local function message(player: Player, value: string)
@@ -63,7 +64,7 @@ function RaceService.Start()
     prompt.RequiresLineOfSight = false
     prompt.Parent = start
     prompt.Triggered:Connect(function(player: Player)
-        if states[player.UserId] then return end
+        if states[player.UserId] or settling[player.UserId] then return end
         local now = os.clock()
         if (cooldown[player.UserId] or 0) > now then return end
         if not ProfileService.IsLoaded(player) then return end
@@ -157,10 +158,12 @@ function RaceService.Start()
                         message(player, "Race time invalid")
                         continue
                     end
+                    settling[id] = true
                     local operation = "race_" .. HttpService:GenerateGUID(false):gsub("-", "")
                     local granted = ProfileService.Mutate(player, function(profile)
                         return Rules.AwardCredits(profile, REWARD, operation)
                     end)
+                    settling[id] = nil
                     message(player, if granted then ("Finished! +" .. REWARD .. " credits")
                         else "Race finished; credit save unavailable")
                 end
@@ -171,6 +174,7 @@ function RaceService.Start()
     Players.PlayerRemoving:Connect(function(player)
         states[player.UserId] = nil
         cooldown[player.UserId] = nil
+        settling[player.UserId] = nil
     end)
 end
 return RaceService
