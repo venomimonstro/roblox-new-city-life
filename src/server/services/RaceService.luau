@@ -160,12 +160,17 @@ function RaceService.Start()
                     end
                     settling[id] = true
                     local operation = "race_" .. HttpService:GenerateGUID(false):gsub("-", "")
-                    local granted = ProfileService.Mutate(player, function(profile)
-                        return Rules.AwardCredits(profile, REWARD, operation)
+                    local safe, granted = pcall(function()
+                        return ProfileService.Mutate(player, function(profile)
+                            return Rules.AwardCredits(profile, REWARD, operation)
+                        end)
                     end)
                     settling[id] = nil
-                    message(player, if granted then ("Finished! +" .. REWARD .. " credits")
-                        else "Race finished; credit save unavailable")
+                    if not safe then
+                        warn("[StreetCity] Race payout operation failed: " .. tostring(granted))
+                    end
+                    message(player, if safe and granted then ("Finished! +" .. REWARD .. " credits")
+                        else "Race finished; credit result unavailable. Reconnect to verify balance.")
                 end
             end
         end
