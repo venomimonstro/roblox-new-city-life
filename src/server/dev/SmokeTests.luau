@@ -161,6 +161,18 @@ function SmokeTests.Run()
         "Personal car must face along the east-west road")
     assert(math.abs(car.Chassis.CFrame.LookVector.Z) < 0.1,
         "Vehicle spawn must not face into pavement / buildings")
+    assert(VehicleFactory.ApplyCatalog(car, "street_coupe"), "Owned coupe appearance")
+    assert(car.Model:GetAttribute("VehicleCatalogId") == "street_coupe",
+        "Factory catalog identity must be visible")
+    local coupeHood = car.Model:FindFirstChild("Hood")
+    assert(coupeHood and coupeHood:IsA("BasePart")
+        and coupeHood.Color == Color3.fromRGB(205, 53, 63),
+        "Bought coupe appearance must differ from starter")
+    assert(VehicleFactory.ApplyCatalog(car, "starter_hatch"), "Starter appearance")
+    assert(coupeHood.Color ~= Color3.fromRGB(205, 53, 63),
+        "Switching car must update prototype visuals")
+    assert(not VehicleFactory.ApplyCatalog(car, "unknown_car"),
+        "Unlisted car appearance must fail")
     parkingFixture:Destroy()
     local world = workspace:FindFirstChild("StreetCityPrototypeWorld")
     assert(world and world:FindFirstChild("DistrictBlockouts"), "Missing generated districts")
