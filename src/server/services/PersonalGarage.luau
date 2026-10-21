@@ -86,6 +86,9 @@ local function createTerminal()
     station.Size = Vector3.new(5, 2, 5)
     station.Position = Vector3.new(17, 0, -61)
     station.Anchored = true
+    station.CanCollide = false
+    station.CanQuery = false
+    station.CanTouch = false
     station.Material = Enum.Material.Neon
     station.Color = Color3.fromRGB(54, 116, 213)
     station.Parent = root
