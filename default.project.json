@@ -5,7 +5,8 @@
     "ReplicatedStorage": {
       "Shared": {
         "$path": "src/shared"
-      }
+      },
+      "$ignoreUnknownInstances": true
     },
     "ServerScriptService": {
       "Server": {
@@ -22,7 +23,8 @@
     "Workspace": {
       "$properties": {
         "StreamingEnabled": true
-      }
+      },
+      "$ignoreUnknownInstances": true
     },
     "Lighting": {
       "$properties": {
