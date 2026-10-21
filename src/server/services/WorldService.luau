@@ -53,29 +53,12 @@ function WorldService.Start()
         part(roadFolder, "EastWest_" .. tostring(i), Vector3.new(575, 0.36, Config.World.RoadWidth), Vector3.new(0, -0.76, n), road, Enum.Material.Asphalt)
     end
 
+    -- DistrictService is the sole authority for all district buildings,
+    -- including downtown. The former WorldService buildings duplicated
+    -- downtown meshes/colliders at the exact same grid coordinates.
     local buildings = Instance.new("Folder")
     buildings.Name = "Buildings"
     buildings.Parent = root
-    local colors = {
-        Color3.fromRGB(139, 160, 173),
-        Color3.fromRGB(188, 174, 158),
-        Color3.fromRGB(110, 124, 144),
-        Color3.fromRGB(192, 194, 185),
-    }
-
-    for x = -2, 1 do
-        for z = -2, 1 do
-            local centerX = x * 100 + 50
-            local centerZ = z * 100 + 50
-            local height = rng:NextInteger(18, 64)
-            local b = part(buildings, "Building_" .. x .. "_" .. z,
-                Vector3.new(51, height, 51),
-                Vector3.new(centerX, height / 2 - 1, centerZ),
-                colors[rng:NextInteger(1, #colors)],
-                Enum.Material.Concrete)
-            b:SetAttribute("District", if x >= 0 then "DowntownPrototype" else "OldDistrictPrototype")
-        end
-    end
 
     -- Coastal and hillside silhouettes: decorative placeholders, not final districts.
     part(root, "Beach", Vector3.new(850, 0.6, 125), Vector3.new(0, -0.45, 462), Color3.fromRGB(216, 195, 139), Enum.Material.Sand)
