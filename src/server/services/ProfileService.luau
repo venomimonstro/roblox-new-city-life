@@ -15,6 +15,16 @@ local profiles: {[number]: any} = {}
 local loading: {[number]: boolean} = {}
 local busy: {[number]: boolean} = {}
 local closing = false
+local stateRemote: RemoteEvent? = nil
+local summaryThrottle: {[number]: number} = {}
+
+local function emitSummary(player: Player)
+    local profile = profiles[player.UserId]
+    if not stateRemote or not profile or player.Parent ~= Players then return end
+    local cars = 0
+    for _ in pairs(profile.garage) do cars += 1 end
+    stateRemote:FireClient(player, profile.credits, cars, profile.selectedVehicleId)
+end
 
 local function key(player: Player): string
     return "user_" .. tostring(player.UserId)
@@ -45,6 +55,7 @@ local function acquire(player: Player)
         return
     end
     profiles[id] = Schema.Decode(output.data)
+    emitSummary(player)
     if player.Parent ~= Players or closing then
         ProfileService.Save(player, true)
     end
@@ -77,6 +88,7 @@ function ProfileService.Mutate(player: Player, edit: (any) -> boolean): boolean
     end)
     if ok and owned(output) and Schema.Decode(output.data) then
         profiles[id] = Schema.Decode(output.data)
+        emitSummary(player)
     end
     busy[id] = nil
     if not ok then warn("[StreetCity] Profile mutation failed for user " .. tostring(id)) end
@@ -111,8 +123,18 @@ function ProfileService.Save(player: Player, release: boolean): boolean
 end
 
 function ProfileService.Start()
+    stateRemote = Instance.new("RemoteEvent")
+    stateRemote.Name = "StreetCityProfileState"
+    stateRemote.Parent = game:GetService("ReplicatedStorage")
+    stateRemote.OnServerEvent:Connect(function(player: Player)
+        local now = os.clock()
+        if now - (summaryThrottle[player.UserId] or 0) < 2 then return end
+        summaryThrottle[player.UserId] = now
+        emitSummary(player)
+    end)
     Players.PlayerAdded:Connect(function(player) task.spawn(acquire, player) end)
     Players.PlayerRemoving:Connect(function(player)
+        summaryThrottle[player.UserId] = nil
         local deadline = os.clock() + 10
         while busy[player.UserId] and os.clock() < deadline do task.wait(0.1) end
         if profiles[player.UserId] then ProfileService.Save(player, true) end
