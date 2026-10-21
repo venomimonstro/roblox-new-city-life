@@ -4,6 +4,8 @@ local Math = require(Shared:WaitForChild("VehicleMath"))
 local Powertrain = require(Shared:WaitForChild("Powertrain"))
 local Catalog = require(Shared:WaitForChild("PartsCatalog"))
 local RoadGraph = require(Shared:WaitForChild("RoadGraph"))
+local VehicleBuild = require(Shared:WaitForChild("VehicleBuild"))
+local Districts = require(Shared:WaitForChild("DistrictConfig"))
 
 local SmokeTests = {}
 function SmokeTests.Run()
@@ -30,6 +32,16 @@ function SmokeTests.Run()
     local graph = RoadGraph.Grid(2, 100)
     assert(RoadGraph.Connected(graph, "0:0"))
     assert(#graph["0:0"].neighbors == 4)
-    print("[StreetCity] PASS: 20 deterministic smoke assertions")
+    assert(#Districts == 7, "Seven zones")
+    local ids = {}
+    for _, zone in Districts do
+        assert(not ids[zone.id], "Unique zone ids")
+        ids[zone.id] = true
+    end
+    assert(VehicleBuild.Resolve({engineId = "stock_i4", gearboxId = "street_5", tireId = "street"}) ~= nil)
+    assert(VehicleBuild.Resolve({engineId = "unknown", gearboxId = "street_5", tireId = "street"}) == nil)
+    assert(VehicleBuild.Resolve({engineId = "stock_i4", gearboxId = "street_5", tireId = "street", finalDrive = 0}) == nil)
+    assert(VehicleBuild.Resolve({engineId = "stock_i4", gearboxId = "street_5", tireId = "street", finalDrive = 4.2}) ~= nil)
+    print("[StreetCity] PASS: 25 deterministic smoke assertions")
 end
 return SmokeTests
