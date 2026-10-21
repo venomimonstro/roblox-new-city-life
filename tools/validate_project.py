@@ -25,6 +25,8 @@ REQUIRED = (
     "src/shared/ParkingLayout.luau",
     "src/shared/GarageTransactions.luau",
     "src/shared/RaceValidation.luau",
+    "src/shared/RaceCourse.luau",
+    "src/server/dev/ScenarioTests.luau",
     "src/server/services/PersonalGarage.luau",
     "src/server/services/GarageMarketplaceService.luau",
     "src/server/services/RaceService.luau",
@@ -83,6 +85,19 @@ def main() -> None:
     race_source = (ROOT / "src/server/services/RaceService.luau").read_text(encoding="utf-8")
     if "p.CanQuery = p.CanCollide" not in world_source or "marker.CanQuery = false" not in race_source:
         raise SystemExit("Suspension safety regression: noncollidable decoration is queryable")
+
+    scenario = (ROOT / "src/server/dev/ScenarioTests.luau").read_text(encoding="utf-8")
+    if 'WaitForChild("ScenarioTests")).Run()' not in bootstrap:
+        raise SystemExit("Scenario simulation is not connected to Studio bootstrap")
+    for rule in ("Rules.AwardCredits", "Rules.PurchaseVehicle", "Rules.PurchasePart",
+                 "Rules.InstallPart", "Outcome.Classify", "Parking.Position"):
+        if rule not in scenario:
+            raise SystemExit("Scenario simulation missing coverage: " + rule)
+
+    course = (ROOT / "src/shared/RaceCourse.luau").read_text(encoding="utf-8")
+    race = (ROOT / "src/server/services/RaceService.luau").read_text(encoding="utf-8")
+    if 'WaitForChild("RaceCourse")' not in race or "CheckpointRadius = 16" not in course:
+        raise SystemExit("Race must use shared validated checkpoint geometry")
 
     workflows = ROOT / ".github" / "workflows"
     if workflows.exists() and any(workflows.iterdir()):
