@@ -11,6 +11,8 @@ local VehicleBuild = require(ReplicatedStorage.Shared:WaitForChild("VehicleBuild
 local VehicleService = {}
 local cars: { Factory.Car } = {}
 local cooldown: { [number]: number } = {}
+local inputThrottle: { [number]: number } = {}
+local inputState: { [Model]: { throttle: number, steer: number, last: number } } = {}
 local ownershipConnections: { RBXScriptConnection } = {}
 local driveState: { [Model]: { gear: number, rpm: number, signature: string, spec: any?, lastTelemetry: number } } = {}
 
@@ -34,6 +36,7 @@ local function assignOwner(car: Factory.Car)
     if not ok then
         warn("[StreetCity] Network ownership update failed: " .. tostring(err))
     end
+    inputState[car.Model] = {throttle = 0, steer = 0, last = 0}
     car.Model:SetAttribute("DriverUserId", if owner then owner.UserId else 0)
 end
 
@@ -51,8 +54,10 @@ local function updateCar(car: Factory.Car)
     local lateral = vel:Dot(right)
     local planar = Vector3.new(vel.X, 0, vel.Z)
 
-    local drive = if seat.Occupant then seat.ThrottleFloat else 0
-    local steer = if seat.Occupant then seat.SteerFloat else 0
+    local input = inputState[car.Model]
+    local live = seat.Occupant ~= nil and input ~= nil and os.clock() - input.last < 0.45
+    local drive = if live then input.throttle else 0
+    local steer = if live then input.steer else 0
     -- Early simulation integration: gear ratios affect drive acceleration. The chassis
     -- is still arcade physics; wheel/suspension constraints are a later milestone.
     local engineId = car.Model:GetAttribute("EngineId")
@@ -155,6 +160,7 @@ function VehicleService.Despawn(car: Factory.Car)
         if entry == car then table.remove(cars, i) break end
     end
     driveState[car.Model] = nil
+    inputState[car.Model] = nil
     car.Model:Destroy()
 end
 
@@ -166,6 +172,28 @@ function VehicleService.Start()
     local remoteFolder = Instance.new("Folder")
     remoteFolder.Name = "StreetCityRemotes"
     remoteFolder.Parent = ReplicatedStorage
+
+    local inputRemote = Instance.new("RemoteEvent")
+    inputRemote.Name = "VehicleInput"
+    inputRemote.Parent = remoteFolder
+    inputRemote.OnServerEvent:Connect(function(player: Player, throttle: any, steer: any)
+        if type(throttle) ~= "number" or type(steer) ~= "number" then return end
+        if throttle ~= throttle or steer ~= steer
+            or math.abs(throttle) > 1.01 or math.abs(steer) > 1.01 then return end
+        local now = os.clock()
+        if now - (inputThrottle[player.UserId] or 0) < 0.045 then return end
+        inputThrottle[player.UserId] = now
+        for _, car in cars do
+            if isDriver(player, car) then
+                inputState[car.Model] = {
+                    throttle = math.clamp(throttle, -1, 1),
+                    steer = math.clamp(steer, -1, 1),
+                    last = now,
+                }
+                break
+            end
+        end
+    end)
 
     local lightsRemote = Instance.new("RemoteEvent")
     lightsRemote.Name = "ToggleHeadlights"
@@ -206,6 +234,7 @@ function VehicleService.Start()
 
     Players.PlayerRemoving:Connect(function(player)
         cooldown[player.UserId] = nil
+        inputThrottle[player.UserId] = nil
     end)
 
     RunService.Heartbeat:Connect(function(_dt)
