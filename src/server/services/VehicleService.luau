@@ -124,6 +124,7 @@ local function updateCar(car: Factory.Car)
     local rayParams = RaycastParams.new()
     rayParams.FilterType = Enum.RaycastFilterType.Exclude
     rayParams.FilterDescendantsInstances = { car.Model }
+    rayParams.IgnoreWater = true
     -- Four-point suspension approximation; contacts are computed server-side.
     -- Cosmetic welded wheels remain until real articulated suspension is built.
     local contacts = 0
@@ -141,8 +142,10 @@ local function updateCar(car: Factory.Car)
         end
     end
     local grounded = contacts > 0
-    car.SuspensionForce.Force = Vector3.new(0,
-        math.min(root.AssemblyMass * 320, root.AssemblyMass * spring / 4), 0)
+    -- The former 320 studs/s² cap could overwhelm gravity and launch the chassis.
+    -- Use an acceleration envelope tied to workspace gravity instead.
+    local suspensionAcceleration = math.clamp(spring / 4, 0, workspace.Gravity * 1.15)
+    car.SuspensionForce.Force = Vector3.new(0, root.AssemblyMass * suspensionAcceleration, 0)
     if not grounded then
         car.DriveForce.Force = Vector3.zero
         car.YawMotor.AngularVelocity = Vector3.zero
