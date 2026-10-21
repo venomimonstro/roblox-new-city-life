@@ -7,6 +7,7 @@ local DataStoreService = game:GetService("DataStoreService")
 local HttpService = game:GetService("HttpService")
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Schema = require(Shared:WaitForChild("ProfileSchema"))
+local MutationOutcome = require(Shared:WaitForChild("ProfileMutationOutcome"))
 
 local ProfileService = {}
 local store: any = nil
@@ -140,14 +141,15 @@ function ProfileService.Mutate(player: Player, edit: (any) -> boolean): boolean
             return {owner = token, leaseUntil = os.time() + LEASE, data = candidate}
         end)
     end)
-    local confirmed = ok and acceptedInTransform and owned(output)
-        and Schema.Decode(output.data) ~= nil
-    if confirmed then
+    local outputValid = type(output) == "table" and Schema.Decode(output.data) ~= nil
+    local outcome = MutationOutcome.Classify(
+        ok, acceptedInTransform, rejectedByRule, invalidOrLost, output, token, outputValid
+    )
+    if outcome == "committed" then
         profiles[id] = Schema.Decode(output.data)
         emitSummary(player)
-    elseif ok and rejectedByRule and not invalidOrLost and output == nil then
-        -- Do not kick for insufficient credits / duplicate operation.
-        -- Leave the validated cached profile alone; renewal later rereads storage.
+    elseif outcome == "rejected" then
+        -- Ordinary insufficient-funds / duplicate-ID rejection. Keep player online.
     else
         -- Missing ownership proof, transform error or indeterminate write status.
         -- Do not allow further player mutations until a fresh session is loaded.
@@ -162,7 +164,7 @@ function ProfileService.Mutate(player: Player, edit: (any) -> boolean): boolean
     end
     busy[id] = nil
     if not ok then warn("[StreetCity] Profile mutation failed for user " .. tostring(id)) end
-    return confirmed
+    return outcome == "committed"
 end
 
 -- Renew/release only the most recently committed DataStore data; never overwrite
