@@ -38,16 +38,14 @@ function DistrictService.Start()
                 -- Roads are on 100-stud grid lines, width 25 studs.
                 -- Center every building halfway BETWEEN grid lines. The old
                 -- +25 offset intersected road collision by ~2.5 studs.
-                Vector3.new(x + ((n - 1) % 4 - 1.5) * 100,
-                    height / 2 - 1, z + (math.floor((n - 1) / 4) - 1) * 100 + 50),
+                Vector3.new(math.floor(x / 100) * 100 + ((n - 1) % 4 - 1.5) * 100,
+                    height / 2 - 1, math.floor(z / 100) * 100
+                        + (math.floor((n - 1) / 4) - 1) * 100 + 50),
                 Enum.Material.Concrete, Color3.fromRGB(130 + index * 8, 135, 148))
         end
-        if district.id ~= "downtown" then
-            createPart(root, district.id .. "_EW", Vector3.new(math.abs(x) + 30, 0.5, 24),
-                Vector3.new(x / 2, -0.7, 0), Enum.Material.Asphalt, asphalt)
-            createPart(root, district.id .. "_NS", Vector3.new(24, 0.5, math.abs(z) + 30),
-                Vector3.new(x, -0.7, z / 2), Enum.Material.Asphalt, asphalt)
-        end
+        -- WorldService owns ALL connected roads; no extra diagonal or
+        -- off-grid connectors can clip district buildings.
+
     end
     print("[StreetCity] Seven district blockouts initialized")
 end
