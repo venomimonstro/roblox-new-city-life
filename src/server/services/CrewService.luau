@@ -147,6 +147,12 @@ function Crew.Start()
         local color = if typeId == "federal"
             then Color3.fromRGB(52, 115, 183) else Color3.fromRGB(174, 70, 110)
         pad(root, "Form_" .. typeId, point, "Form crew", color, function(player)
+            local snapshot = Profile.Read(player)
+            local side = if typeId == "gang" then "outlaw" else "law"
+            if not snapshot or snapshot.allegiance ~= side then
+                say(player, "Choose the matching faction at its registry before forming a crew")
+                return
+            end
             if membership[player.UserId] then say(player, "Leave your current crew first") return end
             local targetSide = if typeId == "federal" then "law" else "outlaw"
             local snapshot = Profile.Read(player)
@@ -171,6 +177,11 @@ function Crew.Start()
         end)
         pad(root, "Apply_" .. typeId, point + Vector3.new(9, 0, 0),
             "Apply to join", color, function(player)
+                local snapshot = Profile.Read(player)
+                if not snapshot or snapshot.allegiance ~= (if typeId == "gang" then "outlaw" else "law") then
+                    say(player, "Your saved faction must match this crew")
+                    return
+                end
                 if membership[player.UserId] then return end
                 local group = groupFor(typeId)
                 if not group then say(player, "No crew recruiting in this city") return end
