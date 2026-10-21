@@ -25,7 +25,7 @@ local function isDriver(player: Player, car: Factory.Car): boolean
     local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
     local ownerId = car.Model:GetAttribute("OwnerUserId")
     return (ownerId == nil or ownerId == player.UserId)
-        and humanoid ~= nil and car.Seat.Occupant == humanoid
+        and humanoid ~= nil and humanoid.Health > 0 and car.Seat.Occupant == humanoid
 end
 
 local function assignOwner(car: Factory.Car)
@@ -62,7 +62,8 @@ local function updateCar(car: Factory.Car)
     local occupant = seat.Occupant
     local player = occupant and Players:GetPlayerFromCharacter(occupant.Parent)
     local ownerId = car.Model:GetAttribute("OwnerUserId")
-    local authorized = player ~= nil and (ownerId == nil or ownerId == player.UserId)
+    local authorized = player ~= nil and occupant.Health > 0
+        and (ownerId == nil or ownerId == player.UserId)
     if occupant and not authorized then
         -- Exploit-resistant even if another script seats a non-owner directly.
         occupant.Sit = false
