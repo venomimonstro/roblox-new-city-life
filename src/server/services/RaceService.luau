@@ -52,6 +52,7 @@ function RaceService.Start()
     start.Position = START
     start.Anchored = true
     start.CanCollide = false
+    start.CanQuery = false
     start.Material = Enum.Material.Neon
     start.Color = Color3.fromRGB(85, 206, 122)
     start.Parent = root
@@ -87,6 +88,7 @@ function RaceService.Start()
         marker.Position = Vector3.new(position.X, -0.2, position.Z)
         marker.Anchored = true
         marker.CanCollide = false
+        marker.CanQuery = false
         marker.CanTouch = false
         marker.Transparency = 0.3
         marker.Material = Enum.Material.Neon
