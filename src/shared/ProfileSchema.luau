@@ -1,44 +1,90 @@
 --!strict
--- Profile schema and migration logic. Pure functions: no DataStore calls.
-local ProfileSchema = {}
-export type Profile = {
-    schemaVersion: number,
-    credits: number,
-    garage: { [string]: { engineId: string, gearboxId: string, tireId: string } },
-}
-local DEFAULT = {
-    schemaVersion = 1,
-    credits = 0,
-    garage = {
-        starter = { engineId = "stock_i4", gearboxId = "street_5", tireId = "street" },
-    },
-}
-local function clone(value: any): any
-    if type(value) ~= "table" then return value end
-    local copy = {}
-    for k, v in pairs(value) do copy[k] = clone(v) end
-    return copy
+-- Schema V2. Decode accepts V1; unknown future formats fail closed.
+local Build = require(script.Parent:WaitForChild("VehicleBuild"))
+local Vehicles = require(script.Parent:WaitForChild("VehicleCatalog"))
+local Schema = {}
+local MAX_CARS = 8
+local MAX_ITEMS = 48
+local MAX_OPERATIONS = 40
+
+local function finiteInteger(value: any, min: number, max: number): boolean
+    return type(value) == "number" and value == value
+        and value % 1 == 0 and value >= min and value <= max
 end
-function ProfileSchema.New(): Profile
-    return clone(DEFAULT) :: Profile
+
+local function keyOk(value: any): boolean
+    return type(value) == "string" and #value >= 1 and #value <= 64
+        and string.match(value, "^[%w_%-]+$") ~= nil
 end
-function ProfileSchema.Decode(raw: any): Profile?
-    if type(raw) ~= "table" or raw.schemaVersion ~= 1 then return nil end
-    if type(raw.credits) ~= "number" or raw.credits ~= raw.credits
-        or raw.credits < 0 or raw.credits > 1e10 then return nil end
+
+function Schema.New()
+    return {
+        schemaVersion = 2,
+        credits = 0,
+        selectedVehicleId = "starter",
+        garage = {
+            starter = {
+                catalogId = "starter_hatch",
+                engineId = "stock_i4",
+                gearboxId = "street_5",
+                tireId = "street",
+            },
+        },
+        inventory = {},
+        recentOperations = {},
+    }
+end
+
+function Schema.Decode(raw: any)
+    if type(raw) ~= "table" then return nil end
+    if raw.schemaVersion ~= 1 and raw.schemaVersion ~= 2 then return nil end
+    if not finiteInteger(raw.credits, 0, 10000000000) then return nil end
     if type(raw.garage) ~= "table" then return nil end
-    local VehicleBuild = require(script.Parent:WaitForChild("VehicleBuild"))
-    local result: Profile = { schemaVersion = 1, credits = math.floor(raw.credits), garage = {} }
+
+    local garage = {}
     local count = 0
-    for id, build in pairs(raw.garage) do
+    for id, vehicle in pairs(raw.garage) do
         count += 1
-        if count > 20 or type(id) ~= "string" or #id > 48 then return nil end
-        if type(build) ~= "table" or not VehicleBuild.Resolve(build) then return nil end
-        result.garage[id] = {
-            engineId = build.engineId, gearboxId = build.gearboxId, tireId = build.tireId,
+        if count > MAX_CARS or not keyOk(id) or type(vehicle) ~= "table" then return nil end
+        local catalogId = if raw.schemaVersion == 1 then "starter_hatch" else vehicle.catalogId
+        if type(catalogId) ~= "string" or Vehicles[catalogId] == nil then return nil end
+        if not Build.Resolve(vehicle) then return nil end
+        garage[id] = {
+            catalogId = catalogId,
+            engineId = vehicle.engineId,
+            gearboxId = vehicle.gearboxId,
+            tireId = vehicle.tireId,
         }
     end
-    if not result.garage.starter then return nil end
-    return result
+    if garage.starter == nil then return nil end
+    local selection = if raw.schemaVersion == 1 then "starter" else raw.selectedVehicleId
+    if not keyOk(selection) or garage[selection] == nil then return nil end
+
+    local inventory = {}
+    local operations = {}
+    if raw.schemaVersion == 2 then
+        if type(raw.inventory) ~= "table" or type(raw.recentOperations) ~= "table" then return nil end
+        local items = 0
+        for itemId, qty in pairs(raw.inventory) do
+            items += 1
+            if items > MAX_ITEMS or not keyOk(itemId) or not finiteInteger(qty, 1, 99) then return nil end
+            inventory[itemId] = qty
+        end
+        local seen = {}
+        for _, opId in ipairs(raw.recentOperations) do
+            if #operations >= MAX_OPERATIONS or not keyOk(opId) or seen[opId] then return nil end
+            seen[opId] = true
+            table.insert(operations, opId)
+        end
+    end
+    return {
+        schemaVersion = 2,
+        credits = raw.credits,
+        selectedVehicleId = selection,
+        garage = garage,
+        inventory = inventory,
+        recentOperations = operations,
+    }
 end
-return table.freeze(ProfileSchema)
+
+return table.freeze(Schema)
