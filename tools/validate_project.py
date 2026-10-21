@@ -111,6 +111,22 @@ def main() -> None:
     if "heading or 0" not in factory or "math.pi / 2" not in vehicle:
         raise SystemExit("Personal vehicles must face along parking road")
 
+    garage = (ROOT / "src/server/services/PersonalGarage.luau").read_text(encoding="utf-8")
+    shop = (ROOT / "src/server/services/GarageMarketplaceService.luau").read_text(encoding="utf-8")
+    hud = (ROOT / "src/client/bootstrap.client.luau").read_text(encoding="utf-8")
+    smoke = (ROOT / "src/server/dev/SmokeTests.luau").read_text(encoding="utf-8")
+    if ('FindMyCarTerminal' not in garage or 'ground.Normal.Y < 0.72' not in garage
+            or 'car.Model:GetAttribute("OwnerUserId") ~= id' not in garage):
+        raise SystemExit("User journey regression: safe owned-car locator missing")
+    if ('"Install " .. offerId' not in shop
+            or "Rules.InstallPart(profile, profile.selectedVehicleId, offerId, operation)" not in shop):
+        raise SystemExit("User journey regression: install must target player's chosen SKU")
+    if ('if RunService:IsStudio() and game.GameId == 0 then' not in shop
+            or 'DEV sandbox +25000 credits' not in shop):
+        raise SystemExit("Studio regression: isolated non-production credit grant missing")
+    if 'NextActionHint' not in hud or 'Shop_Install ' not in smoke:
+        raise SystemExit("User journey regression: HUD guidance or install smoke checks missing")
+
     workflows = ROOT / ".github" / "workflows"
     if workflows.exists() and any(workflows.iterdir()):
         raise SystemExit("GitHub Actions workflows are explicitly disabled")
