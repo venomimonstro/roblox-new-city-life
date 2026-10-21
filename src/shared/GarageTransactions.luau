@@ -160,4 +160,47 @@ function Rules.Workout(profile: any, gain: number, operationId: string): boolean
     return true
 end
 
+-- These assets are PER-PLAYER deeds, not ownership of globally unique land.
+local DEED_BASE = {home = 6500, rental = 12000, shop = 26000}
+
+function Rules.BuyDeed(profile: any, kind: string, price: number, operationId: string): boolean
+    local properties = profile.realEstate
+    if not properties or not DEED_BASE[kind]
+        or type(price) ~= "number" or price % 1 ~= 0 or price < 2000
+        or price > 100000 or type(properties[kind]) ~= "number"
+        or properties[kind] >= 3 or profile.credits < price then return false end
+    if not record(profile, operationId) then return false end
+    properties[kind] += 1
+    profile.credits -= price
+    return true
+end
+
+function Rules.SellDeed(profile: any, kind: string, payout: number, operationId: string): boolean
+    local properties = profile.realEstate
+    if not properties or (kind ~= "rental" and kind ~= "shop")
+        or properties[kind] < 1 or type(payout) ~= "number"
+        or payout % 1 ~= 0 or payout < 500 or payout > 100000
+        or profile.credits + payout > 10000000000 then return false end
+    if not record(profile, operationId) then return false end
+    properties[kind] -= 1
+    profile.credits += payout
+    return true
+end
+
+function Rules.CollectRent(profile: any, serverNow: number,
+    amount: number, operationId: string): boolean
+    local deed = profile.realEstate
+    if not deed or deed.rental + deed.shop < 1
+        or type(serverNow) ~= "number" or serverNow % 1 ~= 0
+        or serverNow < 1000000000 or serverNow > 9999999999
+        or serverNow - deed.lastRentClaim < 900
+        or type(amount) ~= "number" or amount % 1 ~= 0
+        or amount < 1 or amount > 2000
+        or profile.bankCredits + amount > 10000000000 then return false end
+    if not record(profile, operationId) then return false end
+    deed.lastRentClaim = serverNow
+    profile.bankCredits += amount
+    return true
+end
+
 return table.freeze(Rules)
