@@ -21,6 +21,8 @@ REQUIRED = (
     "src/shared/VehicleCatalog.luau",
     "src/shared/ShopCatalog.luau",
     "src/shared/ProfileSchema.luau",
+    "src/server/services/TerritoryService.luau",
+    "src/server/dev/SocialSystemsTests.luau",
     "src/shared/ProfileMutationOutcome.luau",
     "src/shared/ParkingLayout.luau",
     "src/shared/GarageTransactions.luau",
@@ -198,6 +200,18 @@ def main() -> None:
     properties = (ROOT / "src/shared/PropertyTransactions.luau").read_text(encoding="utf-8")
     if 'profile.credits -= quotedPrice' not in properties:
         raise SystemExit("P0: property purchases cannot pay more than 2000 credits")
+
+    # New contested-territory invariants and replay-safe wallet validation.
+    territory = (ROOT / "src/server/services/TerritoryService.luau").read_text(encoding="utf-8")
+    if "TerritoryService.Start()" not in bootstrap or "TerritoryControl" not in territory:
+        raise SystemExit("P0: district influence control absent from published server")
+    if "SocialSystemsTests" not in bootstrap:
+        raise SystemExit("P0: Studio civic economy assertions are disconnected")
+    wallet_source = (ROOT / "src/shared/GarageTransactions.luau").read_text(encoding="utf-8")
+    if wallet_source.count("function Rules.SpendCredits(") != 1:
+        raise SystemExit("P0: conflicting wallet-spend function definitions")
+    if 'realEstate = propertyInfo' not in profile_schema or 'ownedProperties = deeds' not in profile_schema:
+        raise SystemExit("P0: mixed V4 player account state would be truncated")
 
     workflows = ROOT / ".github" / "workflows"
     if workflows.exists() and any(workflows.iterdir()):
