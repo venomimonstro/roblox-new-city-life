@@ -5,11 +5,14 @@ local RunService = game:GetService("RunService")
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
 local VehicleMath = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("VehicleMath"))
 local Factory = require(script.Parent:WaitForChild("VehicleFactory"))
+local Powertrain = require(ReplicatedStorage.Shared:WaitForChild("Powertrain"))
+local Catalog = require(ReplicatedStorage.Shared:WaitForChild("PartsCatalog"))
 
 local VehicleService = {}
 local cars: { Factory.Car } = {}
 local cooldown: { [number]: number } = {}
 local ownershipConnections: { RBXScriptConnection } = {}
+local driveState: { [Model]: { gear: number, rpm: number } } = {}
 
 local function isDriver(player: Player, car: Factory.Car): boolean
     local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
@@ -48,10 +51,32 @@ local function updateCar(car: Factory.Car)
 
     local drive = if seat.Occupant then seat.ThrottleFloat else 0
     local steer = if seat.Occupant then seat.SteerFloat else 0
-    local acceleration = VehicleMath.DriveAcceleration(
+    -- Early simulation integration: gear ratios affect drive acceleration. The chassis
+    -- is still arcade physics; wheel/suspension constraints are a later milestone.
+    local spec = Catalog.CreateSpec("stock_i4", "street_5", "street")
+    assert(spec ~= nil)
+    local state = driveState[car.Model]
+    if not state then
+        state = { gear = 1, rpm = spec.idleRpm }
+        driveState[car.Model] = state
+    end
+    local speedMps = longitudinal * 0.28
+    state.rpm = Powertrain.EngineRpm(spec, state.gear, speedMps)
+    if seat.Occupant and drive > 0 then
+        state.gear = Powertrain.Shift(spec, state, drive)
+    elseif not seat.Occupant then
+        state.gear = 1
+    end
+    local baseline = VehicleMath.DriveAcceleration(
         drive, longitudinal, cfg.ForwardAcceleration, cfg.ReverseAcceleration,
         cfg.MaxForwardSpeed, cfg.MaxReverseSpeed
     )
+    local powerMultiplier = math.clamp(
+        Powertrain.WheelForce(spec, state.rpm, state.gear) / 7500, 0.35, 1.65
+    )
+    local acceleration = if drive > 0 then baseline * powerMultiplier else baseline
+    car.Model:SetAttribute("EngineRPM", math.floor(state.rpm))
+    car.Model:SetAttribute("Gear", state.gear)
 
     local rayParams = RaycastParams.new()
     rayParams.FilterType = Enum.RaycastFilterType.Exclude
@@ -96,6 +121,7 @@ function VehicleService.Start()
 
     local car = Factory.Create(folder, Vector3.new(0, 3.5, -30))
     table.insert(cars, car)
+    driveState[car.Model] = { gear = 1, rpm = 850 }
     table.insert(ownershipConnections, car.Seat:GetPropertyChangedSignal("Occupant"):Connect(function()
         assignOwner(car)
     end))

@@ -9,8 +9,8 @@ Open world **life simulator**, first release focuses on free exploration + cars 
 | 00 | Repository, Rojo, Luau boundaries, docs, smoke checks | **Implemented in source** | Studio sync + local build not yet verified |
 | 01 | Character spawn, interaction, camera, 2-player session | **Partial prototype** | Studio dual-client + mobile walk |
 | 02 | Universal test car and secure headlights | **Partial prototype** | Car handling/collision/replication playtest |
-| 03 | Engine RPM, torque curve, gearbox, clutch, grip, differential | Planned | Deterministic dynamics test |
-| 04 | Procedural street network and district seed/validation | Planned | Reproducible and traversable |
+| 03 | Engine RPM, torque curve, gearbox; integration with provisional chassis | **Partial source implementation** | Studio driving/dynamics test, then clutch/differential |
+| 04 | Road-graph connectivity math | **Partial source implementation** | Render/connect roads, route testing |
 | 05 | Seven connected biomes: downtown, villas, old town, port, villages, mountains, coast | Planned | Travel all regions, streaming |
 | 06 | Cube 4D creator tool, asset checker and car catalog | Planned | New car accepted only after validation |
 | 07 | Owned vehicle spawning, garage, persistence | Planned | Rejoin and restore state |
