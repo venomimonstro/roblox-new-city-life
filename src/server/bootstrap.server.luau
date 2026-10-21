@@ -8,6 +8,7 @@ local DistrictService = require(Services:WaitForChild("DistrictService"))
 local GarageService = require(Services:WaitForChild("GarageService"))
 local ProfileService = require(Services:WaitForChild("ProfileService"))
 local PersonalGarage = require(Services:WaitForChild("PersonalGarage"))
+local RaceService = require(Services:WaitForChild("RaceService"))
 local GarageMarketplaceService = require(Services:WaitForChild("GarageMarketplaceService"))
 
 local success, err = pcall(function()
@@ -19,8 +20,9 @@ local success, err = pcall(function()
     WorldService.Start()
     DistrictService.Start()
     local testCar = VehicleService.Start()
-    GarageService.Start(testCar)
+    if testCar then GarageService.Start(testCar) end
     PersonalGarage.Start()
+    RaceService.Start()
     GarageMarketplaceService.Start()
     if RunService:IsStudio() then
         require(script.Parent:WaitForChild("dev"):WaitForChild("SmokeTests")).Run()
