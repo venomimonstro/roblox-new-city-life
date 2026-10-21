@@ -113,13 +113,19 @@ task.spawn(function()
     local remote = ReplicatedStorage:WaitForChild("StreetCityProfileState", 8)
     if not remote or not remote:IsA("RemoteEvent") then return end
     remote.OnClientEvent:Connect(function(credits: any, cars: any, selected: any,
-        bank: any, goods: any, fitness: any, bodyFat: any)
+        bank: any, goods: any, fitness: any, bodyFat: any,
+        communityBank: any, deeds: any, allegiance: any)
         if type(credits) ~= "number" or type(cars) ~= "number"
             or type(selected) ~= "string" then return end
         local safeBank = if type(bank) == "number" then bank else 0
         local loot = if type(goods) == "number" then goods else 0
-        wallet.Text = string.format("Cash %d | Bank %d | Cars %d | Goods %d",
-            credits, safeBank, cars, loot)
+        local localBank = if type(communityBank) == "number" then communityBank else 0
+        local propertyCount = if type(deeds) == "number" then deeds else 0
+        wallet.Text = string.format("Cash %d | Secure %d | Local %d | Cars %d | Deeds %d",
+            credits, safeBank, localBank, cars, propertyCount)
+        if type(allegiance) == "string" then
+            guide.Text = "Faction: " .. allegiance .. " | Stolen goods: " .. loot
+        end
         if type(fitness) == "number" and type(bodyFat) == "number" then
             bodyStats.Text = string.format("Fitness %d | Body fat %d", fitness, bodyFat)
         end
