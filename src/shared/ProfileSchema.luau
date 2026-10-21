@@ -3,6 +3,7 @@
 local Build = require(script.Parent:WaitForChild("VehicleBuild"))
 local Vehicles = require(script.Parent:WaitForChild("VehicleCatalog"))
 local Offers = require(script.Parent:WaitForChild("ShopCatalog"))
+local Properties = require(script.Parent:WaitForChild("PropertyCatalog"))
 local Schema = {}
 local MAX_CARS = 8
 local MAX_ITEMS = 48
@@ -26,8 +27,32 @@ function Schema.New(userId: number?)
     if type(userId) == "number" and userId >= 1 and userId % 1 == 0 then
         starterId = starterChoices[(userId % #starterChoices) + 1]
     end
+    local communityBankCredits = 0
+    local ownedProperties = {}
+    if raw.schemaVersion == 4 then
+        if not finiteInteger(raw.communityBankCredits, 0, 10000000000)
+            or type(raw.ownedProperties) ~= "table" then return nil end
+        communityBankCredits = raw.communityBankCredits
+        local deeds = 0
+        for propertyId, deed in pairs(raw.ownedProperties) do
+            deeds += 1
+            if deeds > 7 or type(propertyId) ~= "string"
+                or Properties[propertyId] == nil
+                or type(deed) ~= "table"
+                or not finiteInteger(deed.cost, 1, 100000)
+                or type(deed.rented) ~= "boolean"
+                or not finiteInteger(deed.lastPaidAt, 0, 5000000000) then return nil end
+            ownedProperties[propertyId] = {
+                cost = deed.cost,
+                rented = deed.rented,
+                lastPaidAt = deed.lastPaidAt,
+            }
+        end
+    end
     return {
         schemaVersion = 4,
+        communityBankCredits = communityBankCredits,
+        ownedProperties = ownedProperties,
         bankCredits = 0,
         stolenGoods = 0,
         nutrition = 80,
@@ -55,7 +80,7 @@ end
 
 function Schema.Decode(raw: any)
     if type(raw) ~= "table" then return nil end
-    if raw.schemaVersion ~= 1 and raw.schemaVersion ~= 2 and raw.schemaVersion ~= 3 and raw.schemaVersion ~= 4 then return nil end
+    if raw.schemaVersion ~= 1 and raw.schemaVersion ~= 2 and raw.schemaVersion ~= 3 and raw.schemaVersion ~= 4 and raw.schemaVersion ~= 4 then return nil end
     if not finiteInteger(raw.credits, 0, 10000000000) then return nil end
     if type(raw.garage) ~= "table" then return nil end
 
