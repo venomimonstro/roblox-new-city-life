@@ -5,6 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Wanted = {}
 local levels: {[number]: number} = {}
 local lastIncident: {[number]: number} = {}
+local readThrottle: {[number]: number} = {}
 local remote: RemoteEvent? = nil
 
 function Wanted.GetLevel(player: Player): number
@@ -45,11 +46,15 @@ function Wanted.Start()
     remote.Name = "StreetCityWantedState"
     remote.Parent = ReplicatedStorage
     remote.OnServerEvent:Connect(function(player)
+        local now = os.clock()
+        if now - (readThrottle[player.UserId] or -100) < 2 then return end
+        readThrottle[player.UserId] = now
         if remote then remote:FireClient(player, Wanted.GetLevel(player)) end
     end)
     Players.PlayerRemoving:Connect(function(player)
         levels[player.UserId] = nil
         lastIncident[player.UserId] = nil
+        readThrottle[player.UserId] = nil
     end)
     task.spawn(function()
         while true do
