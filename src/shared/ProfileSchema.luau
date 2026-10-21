@@ -1,5 +1,5 @@
 --!strict
--- Schema V2. Decode accepts V1; unknown future formats fail closed.
+-- Schema V3. Decode migrates V1/V2; unknown future formats fail closed.
 local Build = require(script.Parent:WaitForChild("VehicleBuild"))
 local Vehicles = require(script.Parent:WaitForChild("VehicleCatalog"))
 local Offers = require(script.Parent:WaitForChild("ShopCatalog"))
@@ -27,7 +27,12 @@ function Schema.New(userId: number?)
         starterId = starterChoices[(userId % #starterChoices) + 1]
     end
     return {
-        schemaVersion = 2,
+        schemaVersion = 3,
+        bankCredits = 0,
+        stolenGoods = 0,
+        nutrition = 80,
+        fitness = 15,
+        bodyFat = 25,
         credits = 0,
         selectedVehicleId = "starter",
         garage = {
@@ -45,7 +50,7 @@ end
 
 function Schema.Decode(raw: any)
     if type(raw) ~= "table" then return nil end
-    if raw.schemaVersion ~= 1 and raw.schemaVersion ~= 2 then return nil end
+    if raw.schemaVersion ~= 1 and raw.schemaVersion ~= 2 and raw.schemaVersion ~= 3 then return nil end
     if not finiteInteger(raw.credits, 0, 10000000000) then return nil end
     if type(raw.garage) ~= "table" then return nil end
 
@@ -70,7 +75,7 @@ function Schema.Decode(raw: any)
 
     local inventory = {}
     local operations = {}
-    if raw.schemaVersion == 2 then
+    if raw.schemaVersion >= 2 then
         if type(raw.inventory) ~= "table" or type(raw.recentOperations) ~= "table" then return nil end
         local items = 0
         for itemId, qty in pairs(raw.inventory) do
@@ -96,8 +101,30 @@ function Schema.Decode(raw: any)
             table.insert(operations, opId)
         end
     end
+    local bankCredits = 0
+    local stolenGoods = 0
+    local nutrition = 80
+    local fitness = 15
+    local bodyFat = 25
+    if raw.schemaVersion == 3 then
+        if not finiteInteger(raw.bankCredits, 0, 10000000000)
+            or not finiteInteger(raw.stolenGoods, 0, 20)
+            or not finiteInteger(raw.nutrition, 0, 100)
+            or not finiteInteger(raw.fitness, 0, 100)
+            or not finiteInteger(raw.bodyFat, 5, 80) then return nil end
+        bankCredits = raw.bankCredits
+        stolenGoods = raw.stolenGoods
+        nutrition = raw.nutrition
+        fitness = raw.fitness
+        bodyFat = raw.bodyFat
+    end
     return {
-        schemaVersion = 2,
+        schemaVersion = 3,
+        bankCredits = bankCredits,
+        stolenGoods = stolenGoods,
+        nutrition = nutrition,
+        fitness = fitness,
+        bodyFat = bodyFat,
         credits = raw.credits,
         selectedVehicleId = selection,
         garage = garage,
