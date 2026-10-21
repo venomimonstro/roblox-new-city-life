@@ -256,10 +256,27 @@ function ProfileService.Start()
     end)
     game:BindToClose(function()
         closing = true
+        local pending = 0
         for _, player in Players:GetPlayers() do
-            local deadline = os.clock() + 10
-            while busy[player.UserId] and os.clock() < deadline do task.wait(0.1) end
-            if profiles[player.UserId] then ProfileService.Save(player, true) end
+            pending += 1
+            task.spawn(function()
+                local deadline = os.clock() + 15
+                while busy[player.UserId] and os.clock() < deadline do
+                    task.wait(0.1)
+                end
+                if profiles[player.UserId] and not busy[player.UserId] then
+                    ProfileService.Save(player, true)
+                end
+                pending -= 1
+            end)
+        end
+        -- Roblox shutdown time is bounded. Do not serialize saves per player.
+        local deadline = os.clock() + 25
+        while pending > 0 and os.clock() < deadline do
+            task.wait(0.1)
+        end
+        if pending > 0 then
+            warn("[StreetCity] Shutdown incomplete: " .. tostring(pending) .. " profile releases pending")
         end
     end)
 end
