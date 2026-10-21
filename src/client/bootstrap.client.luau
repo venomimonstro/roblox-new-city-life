@@ -59,6 +59,20 @@ wallet.TextColor3 = Color3.fromRGB(240, 240, 240)
 wallet.Text = "Street City Online"
 wallet.Parent = gui
 
+local guide = Instance.new("TextLabel")
+guide.Name = "NextActionHint"
+guide.Position = UDim2.fromOffset(14, 46)
+guide.Size = UDim2.new(0.92, 0, 0, 38)
+guide.BackgroundTransparency = 0.32
+guide.BackgroundColor3 = Color3.fromRGB(18, 25, 35)
+guide.TextColor3 = Color3.fromRGB(238, 241, 242)
+guide.TextSize = 13
+guide.TextWrapped = true
+guide.TextXAlignment = Enum.TextXAlignment.Left
+guide.Font = Enum.Font.Gotham
+guide.Text = "Моя машина: бирюзовая стойка рядом со стартом. Подойдите и нажмите E."
+guide.Parent = gui
+
 task.spawn(function()
     local remote = ReplicatedStorage:WaitForChild("StreetCityProfileState", 8)
     if not remote or not remote:IsA("RemoteEvent") then return end
@@ -136,6 +150,9 @@ RunService.RenderStepped:Connect(function(dt)
     elapsed = 0
     local seat = currentSeat()
     panel.Visible = seat ~= nil
+    guide.Text = if seat
+        then "Гонка: зелёная площадка на центральной дороге. Затем магазин и гараж."
+        else "Моя машина: бирюзовая стойка у старта. Подойдите и нажмите E."
     if seat then
         vehicleInput:FireServer(seat.ThrottleFloat, seat.SteerFloat)
         local kmh = seat.AssemblyLinearVelocity.Magnitude * 0.28 * 3.6
