@@ -53,7 +53,7 @@ local function acquire(player: Player)
     if loading[id] or profiles[id] then return end
     loading[id] = true
     if sandbox then
-        profiles[id] = Schema.New()
+        profiles[id] = Schema.New(player.UserId)
         loading[id] = nil
         emitSummary(player)
         return
@@ -76,7 +76,7 @@ local function acquire(player: Player)
                     if type(old.leaseUntil) ~= "number"
                         or old.leaseUntil > os.time() then return nil end
                 end
-                local data = if old == nil then Schema.New() else Schema.Decode(old.data)
+                local data = if old == nil then Schema.New(player.UserId) else Schema.Decode(old.data)
                 if not data then
                     invalidRecord = true
                     return nil
