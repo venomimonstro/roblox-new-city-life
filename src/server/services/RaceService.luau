@@ -92,6 +92,23 @@ function RaceService.Start()
         marker.Material = Enum.Material.Neon
         marker.Color = Color3.fromRGB(228, 183, 69)
         marker.Parent = root
+        local billboard = Instance.new("BillboardGui")
+        billboard.Name = "WaypointNumber"
+        billboard.Size = UDim2.fromOffset(85, 40)
+        billboard.StudsOffset = Vector3.new(0, 6, 0)
+        billboard.AlwaysOnTop = true
+        billboard.MaxDistance = 180
+        billboard.Adornee = marker
+        billboard.Parent = marker
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.fromScale(1, 1)
+        label.BackgroundColor3 = Color3.fromRGB(28, 32, 38)
+        label.BackgroundTransparency = 0.2
+        label.TextColor3 = Color3.new(1, 1, 1)
+        label.TextScaled = true
+        label.Font = Enum.Font.GothamBold
+        label.Text = "CP " .. tostring(index)
+        label.Parent = billboard
     end
 
     local accumulator = 0
