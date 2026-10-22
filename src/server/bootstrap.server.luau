@@ -37,6 +37,7 @@ local LifeAndDeathService = require(Services:WaitForChild("LifeAndDeathService")
 local RaceService = require(Services:WaitForChild("RaceService"))
 local GarageMarketplaceService = require(Services:WaitForChild("GarageMarketplaceService"))
 local StartupContract = require(Services:WaitForChild("StartupContract"))
+local WorldSurfaceAudit = require(Services:WaitForChild("WorldSurfaceAudit"))
 
 local success, err = pcall(function()
     ProfileService.Start() -- Uses isolated memory-only profiles in unpublished Studio
@@ -73,6 +74,7 @@ local success, err = pcall(function()
     TerritoryService.Start()
     BankNetworkService.Start()
     TrafficService.Start()
+    WorldSurfaceAudit.Validate() -- fail launch on missing drivable roads or unsafe home surfaces
     StartupContract.Validate()
     if RunService:IsStudio() then
         require(script.Parent:WaitForChild("dev"):WaitForChild("SmokeTests")).Run()
