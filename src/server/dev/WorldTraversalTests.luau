@@ -84,7 +84,9 @@ function Tests.Run()
         local door = workspace:Raycast(
             plot.house + Vector3.new(0, 3.5, front * 12),
             Vector3.new(0, 0, -front * 9), ray)
-        assert(door == nil, "House door is blocked by solid primitive geometry")
+        assert(door and door.Instance and door.Instance.Name == "FrontDoor"
+            and door.Instance:FindFirstChild("FrontDoorPrompt"),
+            "House door is blocked by geometry other than its usable hinged door")
     end
     local areas = world:FindFirstChild("DistrictBlockouts")
     for _, district in Districts do
