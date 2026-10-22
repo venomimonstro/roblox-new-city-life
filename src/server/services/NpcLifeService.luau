@@ -2,6 +2,7 @@
 -- LOD NPC life: all 28 residents have low-frequency abstract schedules,
 -- and only those near active players receive visual state updates.
 local Players = game:GetService("Players")
+local lastTalk: {[number]: number} = {}
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Districts = require(ReplicatedStorage.Shared:WaitForChild("DistrictConfig"))
 local Rules = require(ReplicatedStorage.Shared:WaitForChild("NpcLifeRules"))
@@ -39,11 +40,40 @@ function Service.Start()
                 model:SetAttribute("Mood", life.mood)
                 model:SetAttribute("Married", life.married)
                 model:SetAttribute("HasPrivateCar", life.hasCar)
+                local torso = model:FindFirstChild("Torso")
+                if torso and torso:IsA("BasePart") then
+                    local talk = Instance.new("ProximityPrompt")
+                    talk.Name = "ChatWithResident"
+                    talk.ObjectText = "City resident"
+                    talk.ActionText = "Talk"
+                    talk.MaxActivationDistance = 9
+                    talk.RequiresLineOfSight = false
+                    talk.Parent = torso
+                    talk.Triggered:Connect(function(player)
+                        if not model.Parent or not model.PrimaryPart
+                            or player:DistanceFromCharacter(torso.Position) > 12 then return end
+                        local now = os.clock()
+                        if now - (lastTalk[player.UserId] or -100) < 2 then return end
+                        lastTalk[player.UserId] = now
+                        local state = life
+                        local notice = ReplicatedStorage:FindFirstChild("StreetCityRemotes")
+                        local remote = notice and notice:FindFirstChild("GarageNotice")
+                        if remote and remote:IsA("RemoteEvent") then
+                            remote:FireClient(player,
+                                (if state.married then "Married " else "Single ")
+                                .. state.occupation .. " | " .. state.mood
+                                .. " | Last activity: " .. state.event)
+                        end
+                    end)
+                end
                 table.insert(records, {model = model, life = life, time = 0})
             end
         end
     end
     assert(#records == 28, "[StreetCity] Missing NPC lives for seven districts")
+    Players.PlayerRemoving:Connect(function(player)
+        lastTalk[player.UserId] = nil
+    end)
     task.spawn(function()
         while true do
             task.wait(12)
