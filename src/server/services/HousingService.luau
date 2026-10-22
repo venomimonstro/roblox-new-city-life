@@ -1,6 +1,7 @@
 --!strict
 -- Shared physical homes per server; distinct active residences and respawns.
 local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Layout = require(ReplicatedStorage.Shared:WaitForChild("HomeLayout"))
 local Architecture = require(script.Parent:WaitForChild("CityArchitecture"))
@@ -174,7 +175,57 @@ local function buildPlot(root: Instance, slot: number)
             if not ok then warn("[StreetCity] Home garage interaction failed: " .. tostring(err)) end
         end
     end)
-    Architecture.DecorateHome(estate, plot, slot)
+    local door = Architecture.DecorateHome(estate, plot, slot)
+    if door and door:IsA("BasePart") then
+        local closed = door.CFrame
+        local hinge = closed.Position - Vector3.new(door.Size.X / 2, 0, 0)
+        local opened = CFrame.new(hinge)
+            * CFrame.Angles(0, math.rad(if slot < 24 then 95 else -95), 0)
+            * CFrame.new(door.Size.X / 2, 0, 0)
+        local isOpen = false
+        local moving = false
+        local entry = Instance.new("ProximityPrompt")
+        entry.Name = "FrontDoorPrompt"
+        entry.ActionText = "Open home door"
+        entry.ObjectText = "Residence " .. tostring(slot + 1)
+        entry.RequiresLineOfSight = false
+        entry.MaxActivationDistance = 10
+        entry.Parent = door
+        entry.Triggered:Connect(function(player: Player)
+            if assigned[player.UserId] ~= slot or moving then return end
+            local humanoid = player.Character
+                and player.Character:FindFirstChildOfClass("Humanoid")
+            if not humanoid or humanoid.Health <= 0 or humanoid.SeatPart
+                or player:DistanceFromCharacter(door.Position) > 12 then return end
+            if isOpen then
+                -- Never swing a solid door into the player standing in its arc.
+                for _, other in Players:GetPlayers() do
+                    local rootPart = other.Character
+                        and other.Character:FindFirstChild("HumanoidRootPart")
+                    if rootPart and rootPart:IsA("BasePart")
+                        and (rootPart.Position - hinge).Magnitude < 5 then return end
+                end
+            end
+            moving = true
+            local opening = not isOpen
+            if opening then
+                door.CanCollide = false
+                door.CanQuery = false
+            end
+            local tween = TweenService:Create(door,
+                TweenInfo.new(0.45, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut),
+                {CFrame = if opening then opened else closed})
+            tween:Play()
+            tween.Completed:Wait()
+            if not opening then
+                door.CanCollide = true
+                door.CanQuery = true
+            end
+            isOpen = opening
+            moving = false
+            entry.ActionText = if isOpen then "Close home door" else "Open home door"
+        end)
+    end
 end
 
 function Housing.Start()
