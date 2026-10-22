@@ -124,7 +124,8 @@ function Jobs.Start()
                 -- The taxi route must be driven in the player's own car,
                 -- but the customer drop-off may be confirmed AFTER parking
                 -- and stepping out: seated interaction fails on some devices.
-                if def.driving and not shift.didDrive then
+                if def.driving and (shift.drivenDistance or 0)
+                    < CareerRules.RequiredDistance(shift.origin, def.finish) then
                     message(player, "Drive the route in your own car, then park to finish")
                     return
                 end
@@ -221,9 +222,16 @@ function Jobs.Start()
                         and model ~= nil and model:GetAttribute("OwnerUserId") == id
                         and seat.Occupant == humanoid
                 end
-                if delta > 0 and delta < 55 and validMode then
+                if delta > 55 then
+                    shift.moved = 0
+                    shift.drivenDistance = 0
+                    shift.began = os.clock()
+                    shift.origin = pos
+                elseif delta > 0 and validMode then
                     shift.moved += delta
-                    if shift.id == "taxi" then shift.didDrive = true end
+                    if shift.id == "taxi" then
+                        shift.drivenDistance = (shift.drivenDistance or 0) + delta
+                    end
                 end
             end
         end
