@@ -40,9 +40,15 @@ function Sprint.Start()
         local state = sessions[player.UserId]
         if not state then return end
         local now = os.clock()
+        -- A release must never be dropped, even after a short touch tap.
+        -- Otherwise a mobile player can get stuck sprinting.
+        if not wants then
+            state.wants = false
+            return
+        end
         if now - state.lastRequest < 0.09 then return end
         state.lastRequest = now
-        state.wants = wants
+        state.wants = true
     end)
     local accumulator = 0
     RunService.Heartbeat:Connect(function(dt)
