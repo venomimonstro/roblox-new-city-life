@@ -46,6 +46,7 @@ REQUIRED = (
     "src/server/services/StreetDetailService.luau",
     "src/server/services/SprintService.luau",
     "src/server/dev/WorldTraversalTests.luau",
+    "src/server/dev/CityTraversalTests.luau",
     "src/server/services/WeatherService.luau",
     "src/server/services/TrafficService.luau",
     "src/server/services/LifestyleService.luau",
@@ -314,6 +315,31 @@ def main() -> None:
         raise SystemExit("P0: controls or residential navigation missing from player HUD")
     if "Road sample hit wrong material" not in traversal or "House door is blocked" not in traversal:
         raise SystemExit("P0: Studio world tests must cover asphalt and accessible homes")
+
+    # City streets now have ONE collision owner. Weather graphics and
+    # decorations are not allowed to provide fake suspension ground.
+    city_test = (ROOT / "src/server/dev/CityTraversalTests.luau").read_text(encoding="utf-8")
+    if 'WaitForChild("CityTraversalTests")).Run()' not in bootstrap:
+        raise SystemExit("P0: full road/garage/ocean collision tests not wired")
+    for invariant in ("Road collision missing", "House must have a real opening door",
+                      "Car spawn is not above its OWN physical garage floor",
+                      "Coastline must be swim-capable Terrain water"):
+        if invariant not in city_test:
+            raise SystemExit("P0: Studio traversal fixture lacks " + invariant)
+    if '"WorldLimits"' not in world or 'Enum.Material.Water' not in world:
+        raise SystemExit("P0: world edge rescue or real water is missing")
+    if "local rescueAccumulator = 0" not in housing or housing.count(
+            "RunService.Heartbeat:Connect(function(dt)") != 1:
+        raise SystemExit("P0: duplicate or missing player world recovery listener")
+    vehicle = (ROOT / "src/server/services/VehicleService.luau").read_text(encoding="utf-8")
+    if 'Housing.GetGarageSpawn(ownerPlayer)' not in vehicle:
+        raise SystemExit("P0: fallen personal vehicle cannot recover at owner home")
+    if '"FrontDoorPrompt"' not in housing or '"HouseCeiling"' not in architecture:
+        raise SystemExit("P0: home entrance or solid roof regressed")
+    if '"WalkwayNorthSouth"' in district_cosmetics or '"ZebraCrossing"' in district_cosmetics:
+        raise SystemExit("P0: second street system added duplicate physical sidewalks")
+    if '"StreetEnvironment"' not in detail:
+        raise SystemExit("P0: missing sole global sidewalk generator")
 
     workflows = ROOT / ".github" / "workflows"
     if workflows.exists() and any(workflows.iterdir()):
