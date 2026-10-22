@@ -205,6 +205,16 @@ function Traffic.Start()
                             break
                         end
                     end
+                    local activeVehicles = workspace:FindFirstChild("ActiveVehicles")
+                    if activeVehicles then
+                        for _, model in activeVehicles:GetChildren() do
+                            if model:IsA("Model") and model.PrimaryPart
+                                and (model.PrimaryPart.Position - midpoint).Magnitude < 20 then
+                                occupied = true
+                                break
+                            end
+                        end
+                    end
                     if occupied then
                         agent.respawnAt = os.clock() + 10
                         continue
