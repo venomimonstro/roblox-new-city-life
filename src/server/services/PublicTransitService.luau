@@ -57,8 +57,21 @@ local function safeArrival(destination: Vector3, character: Model?): Vector3?
         Vector3.new(0, -18, 0), ray)
     if not hit or not hit.Instance.CanCollide
         or hit.Normal.Y < 0.78
-        or math.abs(hit.Position.Y - destination.Y) > 7 then return nil end
-    return hit.Position + Vector3.new(0, 3.5, 0)
+        or hit.Position.Y < destination.Y - 7
+        or hit.Position.Y > destination.Y + 1.5 then return nil end
+    local landing = hit.Position + Vector3.new(0, 3.5, 0)
+    -- A flat roof or a parked vehicle is not a safe station exit. Check that
+    -- the avatar-sized capsule has room, excluding the supporting floor.
+    local overlap = OverlapParams.new()
+    overlap.FilterType = Enum.RaycastFilterType.Exclude
+    overlap.FilterDescendantsInstances = excluded
+    local obstructions = workspace:GetPartBoundsInBox(
+        CFrame.new(landing + Vector3.new(0, 1, 0)),
+        Vector3.new(2.5, 3.0, 2.5), overlap)
+    for _, part in obstructions do
+        if part.CanCollide then return nil end
+    end
+    return landing
 end
 
 local function ride(player: Player, origin: Vector3, destination: Vector3,
@@ -188,8 +201,12 @@ local function metro(root: Instance)
                 if not human or not rootPart
                     or (rootPart.Position - entrance.Position).Magnitude > 14 then return end
                 -- Surface -> station platforms does not charge a ticket.
-                player.Character:PivotTo(CFrame.new(platformAccess.Position
-                    + Vector3.new(0, 3, 0)))
+                local landing = safeArrival(platformAccess.Position, player.Character)
+                if not landing then
+                    message(player, "Metro platform is unsafe; entrance is temporarily closed")
+                    return
+                end
+                player.Character:PivotTo(CFrame.new(landing))
             end)
         prompt(platformAccess, "Metro: " .. station.label,
             "Ride to " .. destination.label .. " (40 credits)", function(player)
@@ -204,8 +221,13 @@ local function metro(root: Instance)
             if not human or not rootPart or pending[player.UserId]
                 or (rootPart.Position - stairs.Position).Magnitude > 14 then return end
             -- Exit next to entrance, always on the road-side pavement.
-            player.Character:PivotTo(CFrame.new(entrance.Position
-                + Vector3.new(7, 2, 0)))
+            local landing = safeArrival(entrance.Position + Vector3.new(7, 2, 0),
+                player.Character)
+            if not landing then
+                message(player, "Street exit is blocked; use another entrance")
+                return
+            end
+            player.Character:PivotTo(CFrame.new(landing))
         end)
     end
     local train = Instance.new("Model")
@@ -277,6 +299,10 @@ local function bus(root: Instance)
         local target = a:Lerp(b, progress)
         busModel:PivotTo(CFrame.lookAt(target, target + (b - a)))
     end)
+end
+
+function Transit.CheckArrivalForTests(position: Vector3): boolean
+    return safeArrival(position, nil) ~= nil
 end
 
 function Transit.Start()
