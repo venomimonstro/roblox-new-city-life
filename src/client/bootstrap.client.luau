@@ -357,6 +357,117 @@ task.spawn(function()
     end)
 end)
 
+-- Public, server-curated in-game wanted board. Never accept client
+-- requests to choose a victim or define a credit payout.
+local board = Instance.new("Frame")
+board.Name = "WantedBoard"
+board.AnchorPoint = Vector2.new(0.5, 0.5)
+board.Position = UDim2.fromScale(0.5, 0.5)
+board.Size = UDim2.new(0.9, 0, 0.66, 0)
+board.BackgroundColor3 = Color3.fromRGB(19, 28, 39)
+board.Visible = false
+board.Parent = gui
+local boardSize = Instance.new("UISizeConstraint")
+boardSize.MaxSize = Vector2.new(410, 520)
+boardSize.MinSize = Vector2.new(255, 200)
+boardSize.Parent = board
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, -50, 0, 48)
+title.Position = UDim2.fromOffset(10, 0)
+title.BackgroundTransparency = 1
+title.Text = "WANTED — CITY POLICE"
+title.TextSize = 19
+title.Font = Enum.Font.GothamBold
+title.TextColor3 = Color3.fromRGB(241, 224, 186)
+title.Parent = board
+local closeBoard = Instance.new("TextButton")
+closeBoard.Name = "CloseWanted"
+closeBoard.Position = UDim2.new(1, -44, 0, 8)
+closeBoard.Size = UDim2.fromOffset(32, 32)
+closeBoard.Text = "X"
+closeBoard.TextSize = 18
+closeBoard.Font = Enum.Font.GothamBold
+closeBoard.TextColor3 = Color3.new(1, 1, 1)
+closeBoard.BackgroundColor3 = Color3.fromRGB(122, 46, 51)
+closeBoard.Parent = board
+closeBoard.MouseButton1Click:Connect(function()
+    board.Visible = false
+end)
+local scroll = Instance.new("ScrollingFrame")
+scroll.Name = "WantedResidents"
+scroll.Position = UDim2.fromOffset(10, 51)
+scroll.Size = UDim2.new(1, -20, 1, -61)
+scroll.BackgroundTransparency = 1
+scroll.ScrollBarThickness = 6
+scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+scroll.CanvasSize = UDim2.new()
+scroll.Parent = board
+local layout = Instance.new("UIListLayout")
+layout.SortOrder = Enum.SortOrder.LayoutOrder
+layout.Padding = UDim.new(0, 7)
+layout.Parent = scroll
+
+task.spawn(function()
+    local wantedBoardRemote = ReplicatedStorage:WaitForChild("StreetCityWantedPosters", 25)
+    if not wantedBoardRemote or not wantedBoardRemote:IsA("RemoteEvent") then return end
+    wantedBoardRemote.OnClientEvent:Connect(function(entries: any)
+        if type(entries) ~= "table" then return end
+        for _, row in scroll:GetChildren() do
+            if row:IsA("Frame") or row:IsA("TextLabel") then row:Destroy() end
+        end
+        local shown = 0
+        for _, entry in entries do
+            if shown >= 10 then break end
+            if type(entry) ~= "table"
+                or type(entry.userId) ~= "number"
+                or type(entry.username) ~= "string"
+                or type(entry.displayName) ~= "string"
+                or type(entry.stars) ~= "number"
+                or type(entry.credits) ~= "number"
+                or entry.stars < 3 or entry.stars > 5 then continue end
+            shown += 1
+            local card = Instance.new("Frame")
+            card.Name = "Wanted_" .. tostring(shown)
+            card.Size = UDim2.new(1, -10, 0, 65)
+            card.LayoutOrder = shown
+            card.BackgroundColor3 = Color3.fromRGB(42, 55, 67)
+            card.Parent = scroll
+            local avatar = Instance.new("ImageLabel")
+            avatar.Name = "Avatar"
+            avatar.Size = UDim2.fromOffset(55, 55)
+            avatar.Position = UDim2.fromOffset(5, 5)
+            avatar.BackgroundTransparency = 1
+            avatar.Image = "rbxthumb://type=AvatarHeadShot&id="
+                .. tostring(math.floor(entry.userId)) .. "&w=150&h=150"
+            avatar.Parent = card
+            local name = Instance.new("TextLabel")
+            name.Size = UDim2.new(1, -72, 1, -5)
+            name.Position = UDim2.fromOffset(68, 2)
+            name.TextXAlignment = Enum.TextXAlignment.Left
+            name.TextWrapped = true
+            name.TextSize = 13
+            name.Font = Enum.Font.GothamMedium
+            name.BackgroundTransparency = 1
+            name.TextColor3 = Color3.fromRGB(245, 246, 246)
+            name.Text = string.sub(entry.displayName, 1, 25)
+                .. " (@" .. string.sub(entry.username, 1, 22) .. ")"
+                .. "\n" .. string.rep("★", math.floor(entry.stars))
+                .. "  •  " .. tostring(math.floor(entry.credits)) .. " bank credits"
+            name.Parent = card
+        end
+        if shown == 0 then
+            local empty = Instance.new("TextLabel")
+            empty.Size = UDim2.new(1, -10, 0, 70)
+            empty.BackgroundTransparency = 1
+            empty.TextWrapped = true
+            empty.TextColor3 = Color3.fromRGB(212, 226, 229)
+            empty.Text = "No eligible wanted residents in this server."
+            empty.Parent = scroll
+        end
+        board.Visible = true
+    end)
+end)
+
 local elapsed = 0
 RunService.RenderStepped:Connect(function(dt)
     if workspace.CurrentCamera then
