@@ -8,6 +8,7 @@ local HttpService = game:GetService("HttpService")
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Schema = require(Shared:WaitForChild("ProfileSchema"))
 local MutationOutcome = require(Shared:WaitForChild("ProfileMutationOutcome"))
+local LeaseOutcome = require(Shared:WaitForChild("ProfileLeaseOutcome"))
 
 local ProfileService = {}
 local store: any = nil
@@ -239,9 +240,14 @@ function ProfileService.Save(player: Player, release: boolean): boolean
     -- Lease renewal is safe to retry: each attempt reads the newest record
     -- and never overwrites persisted gameplay data with an in-memory snapshot.
     for attempt = 1, 3 do
+        local writtenInTransform = false
         local ok, output = pcall(function()
             return activeStore():UpdateAsync(key(player), function(old)
+                -- Reset for every callback re-entry: a rejected final retry
+                -- must not borrow acceptance from an earlier callback.
+                writtenInTransform = false
                 if not owned(old) or not Schema.Decode(old.data) then return nil end
+                writtenInTransform = true
                 return {
                     owner = if release then nil else token,
                     leaseUntil = if release then 0 else os.time() + LEASE,
@@ -249,9 +255,10 @@ function ProfileService.Save(player: Player, release: boolean): boolean
                 }
             end)
         end)
-        confirmed = ok and type(output) == "table"
-            and output.owner == (if release then nil else token)
-            and Schema.Decode(output.data) ~= nil
+        confirmed = LeaseOutcome.Confirmed(
+            ok, writtenInTransform, output, token, release,
+            type(output) == "table" and Schema.Decode(output.data) ~= nil
+        )
         if confirmed then
             confirmedData = Schema.Decode(output.data)
             break
