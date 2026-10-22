@@ -97,13 +97,41 @@ function Economy.SecurityDividend(profile: any, districtId: string,
 end
 
 function Economy.BountyReward(profile: any, stars: number,
-    operationId: string): boolean
+    operationId: string, victimUserId: number?, paidAt: number?): boolean
     if type(stars) ~= "number" or stars % 1 ~= 0
         or stars < 3 or stars > 5 then return false end
     local payout = 320 + stars * 200
     if profile.bankCredits + payout > MAX_MONEY then return false end
+    local claimKey: string? = nil
+    if victimUserId ~= nil or paidAt ~= nil then
+        if type(victimUserId) ~= "number" or victimUserId % 1 ~= 0
+            or victimUserId < 1 or victimUserId > 1000000000000000
+            or type(paidAt) ~= "number" or paidAt % 1 ~= 0
+            or paidAt < 1000000000 or paidAt > 5000000000
+            or type(profile.bountyClaims) ~= "table" then return false end
+        claimKey = tostring(victimUserId)
+        local previous = profile.bountyClaims[claimKey]
+        if previous and paidAt - previous < 1800 then return false end
+    end
     if not op(profile, operationId) then return false end
     profile.bankCredits += payout
+    if claimKey and paidAt then
+        -- Separate durable deduplication: the short 40-operation wallet journal
+        -- can roll over during regular shopping without reopening bounty claims.
+        profile.bountyClaims[claimKey] = paidAt
+        local count = 0
+        local oldestKey: string? = nil
+        local oldestTime = math.huge
+        for key, timestamp in pairs(profile.bountyClaims) do
+            count += 1
+            if timestamp < oldestTime then
+                oldestKey, oldestTime = key, timestamp
+            end
+        end
+        if count > 20 and oldestKey then
+            profile.bountyClaims[oldestKey] = nil
+        end
+    end
     return true
 end
 
