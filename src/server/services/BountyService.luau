@@ -66,8 +66,9 @@ function Bounties.ResolveDeath(victim: Player, human: Humanoid,
     -- Stable window key helps the profile journal reject repeated payouts
     -- after reconnecting to another server within the same half-hour.
     local op = "bounty_" .. tostring(id) .. "_" .. tostring(math.floor(os.time() / 1800))
+    local paidAt = os.time()
     local success = Profile.Mutate(hunter, function(profile)
-        return Economy.BountyReward(profile, stars, op)
+        return Economy.BountyReward(profile, stars, op, id, paidAt)
     end)
     if success then
         if hunter.Parent == Players then
