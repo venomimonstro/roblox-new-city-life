@@ -24,6 +24,14 @@ end
 -- Movement budget for actual elapsed server sampling interval.
 -- Mobile players may suffer a delayed Heartbeat; the cap accommodates
 -- normal replication corrections but not 50-stud microteleports every tick.
+-- A long server/network stall cannot prove either legitimate driving OR a
+-- teleport. Never credit unobserved movement, but don't fail the entire
+-- assignment solely because replication paused for several seconds.
+function Rules.IsUnobservedSample(elapsed: number): boolean
+    return type(elapsed) ~= "number" or elapsed ~= elapsed
+        or elapsed <= 0 or elapsed > 5
+end
+
 function Rules.MaximumMovementForSample(elapsed: number, mode: string): number
     if type(elapsed) ~= "number" or elapsed ~= elapsed
         or elapsed <= 0 or elapsed > 5 then return 0 end
