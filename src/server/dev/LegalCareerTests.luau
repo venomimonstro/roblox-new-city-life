@@ -100,6 +100,12 @@ function Tests.Run()
         "Worker may finish or cancel shift")
     assert(ShiftRegistry.Claim(fakePlayerId, "legacy_taxi"),
         "A player can accept another job after release")
+    assert(not ShiftRegistry.Expired(100, 1299.9),
+        "Long assignment is still valid just before 20 minutes")
+    assert(ShiftRegistry.Expired(100, 1300),
+        "The immutable 20-minute mission deadline must release job lock")
+    assert(ShiftRegistry.Expired(100, 99),
+        "Reversed or invalid clocks never extend an assignment")
     assert(ShiftRegistry.Release(fakePlayerId, "legacy_taxi"),
         "Shared shift lock cleaned for subsequent tests")
     assert(driving >= 6 and foot >= 8, "Both road and walking careers required")
