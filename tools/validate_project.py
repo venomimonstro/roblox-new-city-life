@@ -315,6 +315,12 @@ def main() -> None:
         raise SystemExit("P0: jobs may pay for standing still or teleporting")
     if "if not matchesRequiredMode then return false end" not in mission_rules:
         raise SystemExit("P0: foot and driving mission modes are inverted")
+    if "function Rules.IsUnobservedSample(" not in mission_rules:
+        raise SystemExit("P0: network stalls are misclassified as player teleporting")
+    if "CareerRules.IsUnobservedSample(sampleElapsed)" not in career_source:
+        raise SystemExit("P0: driving and walking careers disconnect after mobile lag spikes")
+    if "CareerRules.IsUnobservedSample(elapsed)" not in legacy_jobs:
+        raise SystemExit("P0: public-service jobs drop players after mobile lag spikes")
     if "pendingFishSale[id] = true" not in legacy_jobs:
         raise SystemExit("P0: asynchronous fish sale can pay twice")
     if "StreetCityCareerStatus" not in career_source:
@@ -546,6 +552,9 @@ def main() -> None:
     world_jobs = (ROOT / "src/server/dev/CareerWorldTests.luau").read_text(encoding="utf-8")
     if "workspace:Raycast" not in world_jobs or "Fish_Sell" not in world_jobs:
         raise SystemExit("P0: not all career and fishing destinations are ground-checked")
+    if "local function checkLeg(" not in world_jobs or "checkLeg(previous, stop," not in world_jobs:
+        raise SystemExit("P0: career tests inspect endpoints only, not the road between")
+
 
     workflows = ROOT / ".github" / "workflows"
     if workflows.exists() and any(workflows.iterdir()):
