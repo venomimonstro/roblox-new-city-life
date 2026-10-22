@@ -42,7 +42,8 @@ local function emitSummary(player: Player)
     stateRemote:FireClient(player, profile.credits, cars, profile.selectedVehicleId,
         profile.bankCredits or 0, profile.stolenGoods or 0,
         profile.fitness or 15, profile.bodyFat or 25,
-        profile.communityBankCredits or 0, deeds, profile.allegiance or "independent")
+        profile.communityBankCredits or 0, deeds, profile.allegiance or "independent",
+        profile.homeCredits or 0, profile.medicalDebt or 0, profile.deathCount or 0)
 end
 
 local function key(player: Player): string
