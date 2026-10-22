@@ -9,6 +9,7 @@ local Powertrain = require(ReplicatedStorage.Shared:WaitForChild("Powertrain"))
 local VehicleBuild = require(ReplicatedStorage.Shared:WaitForChild("VehicleBuild"))
 local VehicleCatalog = require(ReplicatedStorage.Shared:WaitForChild("VehicleCatalog"))
 local Wanted = require(script.Parent:WaitForChild("WantedService"))
+local Housing = require(script.Parent:WaitForChild("HousingService"))
 
 local VehicleService = {}
 local WHEEL_OFFSETS = {
@@ -67,6 +68,28 @@ local function updateCar(car: Factory.Car)
     local cfg = Config.Vehicle
     if not root:IsDescendantOf(workspace) then
         return
+    end
+    -- Real physics can occasionally tunnel through streamed terrain.
+    -- Recover only personally owned cars, never arbitrary NPC/stolen vehicles.
+    local ownerUserId = car.Model:GetAttribute("OwnerUserId")
+    if root.Position.Y < -40 and type(ownerUserId) == "number"
+        and ownerUserId > 0 then
+        local ownerPlayer = Players:GetPlayerByUserId(ownerUserId)
+        local home = ownerPlayer and Housing.GetGarageSpawn(ownerPlayer)
+        if home then
+            if car.Seat.Occupant then car.Seat.Occupant.Sit = false end
+            inputState[car.Model] = {throttle = 0, steer = 0, last = 0}
+            car.DriveForce.Force = Vector3.zero
+            car.SuspensionForce.Force = Vector3.zero
+            car.YawMotor.AngularVelocity = Vector3.zero
+            car.Model:PivotTo(CFrame.new(home.position)
+                * CFrame.Angles(0, home.heading, 0))
+            root.AssemblyLinearVelocity = Vector3.zero
+            root.AssemblyAngularVelocity = Vector3.zero
+            car.Model:SetAttribute("StreetCityWorldRescues",
+                (car.Model:GetAttribute("StreetCityWorldRescues") or 0) + 1)
+            return
+        end
     end
     local vel = root.AssemblyLinearVelocity
     local fwd = root.CFrame.LookVector
