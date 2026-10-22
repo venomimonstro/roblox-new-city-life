@@ -86,10 +86,21 @@ local function relocate(player: Player, character: Model)
     if player.Parent ~= Players or player.Character ~= character then return end
     local position = Housing.GetHomePosition(player)
     if not position then return end
-    -- Wait for Roblox's own SpawnLocation positioning to settle first.
-    task.wait(0.2)
-    if player.Character ~= character or human.Health <= 0 then return end
+    -- Prefetch each player's PRIVATE HOME before the server relocates them.
+    -- On large streaming maps a straight PivotTo can place players into an
+    -- unloaded parcel, causing a fall through the world on low-end laptops.
+    local prefetchOk, prefetchErr = pcall(function()
+        player:RequestStreamAroundAsync(position, 5)
+    end)
+    if not prefetchOk then
+        warn("[StreetCity] Home prefetch unavailable: " .. tostring(prefetchErr))
+    end
+    task.wait(0.15)
+    if player.Parent ~= Players or player.Character ~= character
+        or human.Health <= 0 then return end
     character:PivotTo(CFrame.new(position))
+    root.AssemblyLinearVelocity = Vector3.zero
+    root.AssemblyAngularVelocity = Vector3.zero
     local id = player.UserId
     spawned[id] = (spawned[id] or 0) + 1
     if spawned[id] > 1 and respawnHandler then
