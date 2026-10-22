@@ -468,6 +468,74 @@ task.spawn(function()
     end)
 end)
 
+-- Boxing controls work on keyboard, gamepad and touch. The remote sends
+-- only an enum style; the server checks range, cooldowns and NPC bout state.
+local boxingPanel=Instance.new("TextLabel")
+boxingPanel.Name="BoxingStatus"
+boxingPanel.Position=UDim2.new(0.5,-150,0,212)
+boxingPanel.Size=UDim2.fromOffset(300,48)
+boxingPanel.BackgroundColor3=Color3.fromRGB(29,39,51)
+boxingPanel.BackgroundTransparency=0.12
+boxingPanel.TextColor3=Color3.fromRGB(249,224,199)
+boxingPanel.TextSize=14
+boxingPanel.Font=Enum.Font.GothamSemibold
+boxingPanel.TextWrapped=true
+boxingPanel.Visible=false
+boxingPanel.Parent=gui
+local boxingRemote: RemoteEvent?=nil
+local boxingMode=""
+task.spawn(function()
+    local remote=ReplicatedStorage:WaitForChild("StreetCityBoxingAction",25)
+    if not remote or not remote:IsA("RemoteEvent") then return end
+    boxingRemote=remote
+    remote.OnClientEvent:Connect(function(mode: any, number: any,
+        roundScore: any, totalScore: any)
+        if mode==false then
+            boxingPanel.Visible=false
+            boxingMode=""
+            return
+        end
+        if mode~="bag" and mode~="bout" then return end
+        boxingMode=mode
+        boxingPanel.Visible=true
+        if mode=="bag" then
+            boxingPanel.Text="Boxing practice | level "..tostring(number)
+                .."\nJ Jab  K Hook  U Uppercut"
+        else
+            boxingPanel.Text="NPC BOXING: round "..tostring(number).."/3"
+                .." | points "..tostring(roundScore).." | total "..tostring(totalScore)
+                .."\nJ Jab  K Hook  U Uppercut"
+        end
+    end)
+end)
+local function boxingAction(style: string, state: Enum.UserInputState)
+    if state~=Enum.UserInputState.Begin then return Enum.ContextActionResult.Pass end
+    local character=player.Character
+    local root=character and character:FindFirstChild("HumanoidRootPart")
+    local nearby=root and root:IsA("BasePart")
+        and (root.Position-Vector3.new(260,2,-440)).Magnitude<55
+    if nearby and boxingRemote then
+        boxingRemote:FireServer(style)
+        return Enum.ContextActionResult.Sink
+    end
+    return Enum.ContextActionResult.Pass
+end
+ContextActionService:BindAction("BoxingJab",function(_,state)
+    return boxingAction("jab",state)
+end,true,Enum.KeyCode.J,Enum.KeyCode.ButtonX)
+ContextActionService:BindAction("BoxingHook",function(_,state)
+    return boxingAction("hook",state)
+end,true,Enum.KeyCode.K,Enum.KeyCode.ButtonY)
+ContextActionService:BindAction("BoxingUppercut",function(_,state)
+    return boxingAction("uppercut",state)
+end,true,Enum.KeyCode.U,Enum.KeyCode.ButtonB)
+ContextActionService:SetTitle("BoxingJab","Jab")
+ContextActionService:SetTitle("BoxingHook","Hook")
+ContextActionService:SetTitle("BoxingUppercut","Upper")
+ContextActionService:SetPosition("BoxingJab",UDim2.fromScale(0.67,0.69))
+ContextActionService:SetPosition("BoxingHook",UDim2.fromScale(0.77,0.69))
+ContextActionService:SetPosition("BoxingUppercut",UDim2.fromScale(0.87,0.69))
+
 local elapsed = 0
 RunService.RenderStepped:Connect(function(dt)
     if workspace.CurrentCamera then
