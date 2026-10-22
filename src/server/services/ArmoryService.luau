@@ -136,9 +136,16 @@ local function strikeWanted(player: Player, def: any): boolean
     if not targetHumanoid or targetHumanoid.Health <= 0 then return false end
     -- Only the server can assign a bounty tag. Client sends no target, star
     -- count, reward or damage; attack faces the current character direction.
-    targetHumanoid:SetAttribute("StreetCityBountyAttacker", player.UserId)
-    targetHumanoid:SetAttribute("StreetCityBountyHitAt", os.clock())
     local damage = if distanceLimit < 12 then 9 else 17
+    -- Award only a server-observed finishing attack. Being hit once and then
+    -- falling into water/void must not pay an unrelated PvP bounty.
+    if targetHumanoid.Health <= damage and targetHumanoid.Health > 0 then
+        targetHumanoid:SetAttribute("StreetCityBountyAttacker", player.UserId)
+        targetHumanoid:SetAttribute("StreetCityBountyHitAt", os.clock())
+    else
+        targetHumanoid:SetAttribute("StreetCityBountyAttacker", nil)
+        targetHumanoid:SetAttribute("StreetCityBountyHitAt", nil)
+    end
     targetHumanoid:TakeDamage(damage)
     return true
 end
