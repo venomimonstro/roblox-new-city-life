@@ -36,6 +36,8 @@ REQUIRED = (
     "src/shared/PropertyTransactions.luau",
     "src/shared/HomeLayout.luau",
     "src/shared/LegalCareerCatalog.luau",
+    "src/shared/TransitMap.luau",
+    "src/shared/NpcLifeRules.luau",
     "src/shared/CareerRules.luau",
     "src/shared/LifeEconomy.luau",
     "src/server/services/DistrictSocietyService.luau",
@@ -59,6 +61,8 @@ REQUIRED = (
     "src/server/services/LifestyleService.luau",
     "src/server/services/CityJobsService.luau",
     "src/server/services/LegalCareerService.luau",
+    "src/server/services/PublicTransitService.luau",
+    "src/server/services/NpcLifeService.luau",
     "src/server/services/WorkShiftRegistry.luau",
     "src/server/services/LifeAndDeathService.luau",
     "src/server/services/BountyService.luau",
@@ -68,6 +72,7 @@ REQUIRED = (
     "src/server/services/ArmoryService.luau",
     "src/server/dev/CityLifeTests.luau",
     "src/server/dev/LegalCareerTests.luau",
+    "src/server/dev/TransitAndNpcTests.luau",
     "src/server/dev/LifeEconomyTests.luau",
     "src/server/dev/DistrictEconomyTests.luau",
     "src/server/dev/SocialSystemsTests.luau",
@@ -433,6 +438,20 @@ def main() -> None:
         raise SystemExit("P0: vehicle damage Studio tests not hooked up")
     if "if not grounded or deltaSpeed < 15" not in vehicle_damage:
         raise SystemExit("P0: impact from airborne fall could damage before landing")
+
+    for service in ("PublicTransitService", "NpcLifeService"):
+        if service + ".Start()" not in bootstrap:
+            raise SystemExit("Transit or NPC-life simulation omitted from game startup: " + service)
+    if 'WaitForChild("TransitAndNpcTests")).Run()' not in bootstrap:
+        raise SystemExit("Transit and NPC life suite not linked to Studio")
+    transit = (ROOT / "src/server/services/PublicTransitService.luau").read_text(encoding="utf-8")
+    for token in ("MetroEntrance_", "PlatformAccess_", "MetroExit_", "BusStop_",
+                  "MetroTrain", "CityBusNPC", "Profile.Mutate(player"):
+        if token not in transit:
+            raise SystemExit("Transit user-journey contract missing " + token)
+    life = (ROOT / "src/server/services/NpcLifeService.luau").read_text(encoding="utf-8")
+    if "task.wait(12)" not in life or "nearPlayer(" not in life:
+        raise SystemExit("NPC life regression: missing scheduled updates or proximity LOD")
 
     workflows = ROOT / ".github" / "workflows"
     if workflows.exists() and any(workflows.iterdir()):
