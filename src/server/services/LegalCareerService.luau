@@ -94,7 +94,7 @@ local function launch(player: Player, definition: any, pad: Part)
         definition = definition, status = "active", stage = 1,
         origin = root.Position, lastPosition = root.Position,
         began = os.clock(), startedAt = os.clock(), moved = 0,
-        movingInCar = false,
+        movingInCar = false, lastDrivenAt = -100, lastDrivenPosition = nil,
         operation = "career_" .. HttpService:GenerateGUID(false):gsub("-", ""),
         missionId = sessionsStarted,
     }
@@ -147,7 +147,21 @@ local function advance(player: Player, job: any, now: number, pos: Vector3)
     local character = player.Character
     local humanoid = character and character:FindFirstChildOfClass("Humanoid")
     local isOnFoot = humanoid ~= nil and humanoid.SeatPart == nil
-    local isValidTransport = if mode == "vehicle" then validVehicle else isOnFoot
+    local target = definition.stops[job.stage]
+    if not target then return end
+    -- Drivers may pull over and walk a few studs to deliver the parcel.
+    -- This is allowed only if THIS leg was actually driven in their owned
+    -- car and their last server-observed car position was near the destination.
+    local parkedAtStop = false
+    if mode == "vehicle" and isOnFoot and job.lastDrivenPosition then
+        parkedAtStop = now - (job.lastDrivenAt or -100) <= 20
+            and (Vector3.new(job.lastDrivenPosition.X, 0, job.lastDrivenPosition.Z)
+                - Vector3.new(target.X, 0, target.Z)).Magnitude <= 25
+            and (Vector3.new(pos.X, 0, pos.Z)
+                - Vector3.new(target.X, 0, target.Z)).Magnitude <= 16
+    end
+    local isValidTransport = if mode == "vehicle"
+        then validVehicle or parkedAtStop else isOnFoot
     local prior = job.lastPosition
     local change = (Vector3.new(pos.X, 0, pos.Z) - Vector3.new(prior.X, 0, prior.Z)).Magnitude
     job.lastPosition = pos
@@ -155,6 +169,8 @@ local function advance(player: Player, job: any, now: number, pos: Vector3)
     -- after the jump and never count the jump itself toward the mission.
     if change > 55 then
         job.moved = 0
+        job.lastDrivenPosition = nil
+        job.lastDrivenAt = -100
         job.began = now
         job.origin = pos
         send(player, job, "Large position jump detected; travel route reset")
@@ -163,11 +179,15 @@ local function advance(player: Player, job: any, now: number, pos: Vector3)
     -- 0.35s tick at <=150stud/s; jump/teleport spikes do not count.
     -- Count only motion observed in the required mode. This stops an
     -- unattended/AI car or another player's vehicle from completing a shift.
-    if change > 0 and change < 55 and isValidTransport then
-        job.moved += change
+    if change > 0 and change < 55 then
+        if mode == "vehicle" and validVehicle then
+            job.moved += change
+            job.lastDrivenPosition = pos
+            job.lastDrivenAt = now
+        elseif mode == "foot" and isOnFoot then
+            job.moved += change
+        end
     end
-    local target = definition.stops[job.stage]
-    if not target then return end
     local seconds = now - job.began
     if not CareerRules.CanFinishLeg(job.origin, target, pos, seconds,
         job.moved, mode, isValidTransport) then return end
@@ -180,6 +200,8 @@ local function advance(player: Player, job: any, now: number, pos: Vector3)
     job.lastPosition = pos
     job.began = now
     job.moved = 0
+    job.lastDrivenPosition = nil
+    job.lastDrivenAt = -100
     send(player, job, "Stop confirmed. Proceed to the final workplace.")
 end
 
