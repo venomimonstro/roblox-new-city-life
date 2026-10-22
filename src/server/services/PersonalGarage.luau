@@ -91,6 +91,15 @@ function PersonalGarage.Recall(player: Player): boolean
     local car = active[id]
     if not car or not car.Model.Parent then return PersonalGarage.Refresh(player) end
     if car.Model:GetAttribute("OwnerUserId") ~= id or car.Seat.Occupant then return false end
+    -- Returning a destroyed personal car to its garage must restore a drivable
+    -- replacement, not permanently park a zero-health, disabled chassis.
+    -- Paid ownership and installed parts still come from the saved profile.
+    local health = car.Model:GetAttribute("VehicleHealth")
+    if type(health) == "number" and health <= 0 then
+        VehicleService.Despawn(car)
+        active[id] = nil
+        return PersonalGarage.Refresh(player)
+    end
     local lostBelowWorld = car.Chassis.Position.Y < -10
     if not lostBelowWorld and car.Chassis.AssemblyLinearVelocity.Magnitude > 3 then
         return false
