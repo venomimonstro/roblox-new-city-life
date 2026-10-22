@@ -579,6 +579,14 @@ def main() -> None:
     if "count > 128" not in schema or "count > 128" not in economy:
         raise SystemExit("P0: victim-claim ledger would evict live public-server bounties")
 
+    old_jobs = (ROOT / "src/server/services/CityJobsService.luau").read_text(encoding="utf-8")
+    if 'operation = "job_" .. HttpService:GenerateGUID(false)' not in old_jobs:
+        raise SystemExit("P0: original jobs must allocate stable receipt upon shift acceptance")
+    if 'credit(player, def.reward, shift.operation)' not in old_jobs:
+        raise SystemExit("P0: job salary must reuse accepted shift receipt")
+    if "ShiftRegistry.Claim" not in old_jobs or "ShiftRegistry.Release" not in old_jobs:
+        raise SystemExit("P0: original jobs must share exclusive paid shift registry")
+
     workflows = ROOT / ".github" / "workflows"
     if workflows.exists() and any(workflows.iterdir()):
         raise SystemExit("GitHub Actions workflows are explicitly disabled")
