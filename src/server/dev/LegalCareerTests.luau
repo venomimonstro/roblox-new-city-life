@@ -5,6 +5,7 @@ local Catalog = require(Shared:WaitForChild("LegalCareerCatalog"))
 local Rules = require(Shared:WaitForChild("CareerRules"))
 local Schema = require(Shared:WaitForChild("ProfileSchema"))
 local Wallet = require(Shared:WaitForChild("GarageTransactions"))
+local ShiftRegistry = require(script.Parent.Parent:WaitForChild("services"):WaitForChild("WorkShiftRegistry"))
 local Tests = {}
 
 function Tests.Run()
@@ -63,6 +64,21 @@ function Tests.Run()
         "Repeated UpdateAsync operation ID cannot pay salary twice")
     assert(fake.credits == 410 and Schema.Decode(fake) ~= nil,
         "Credit journal and persisted profile must stay consistent")
+    local fakePlayerId = -920014
+    assert(ShiftRegistry.Claim(fakePlayerId, "career_parcel"),
+        "First shift must reserve a worker")
+    assert(not ShiftRegistry.Claim(fakePlayerId, "legacy_taxi"),
+        "Second career provider cannot overlap")
+    assert(not ShiftRegistry.Release(fakePlayerId, "legacy_taxi"),
+        "Unrelated service cannot release another shift")
+    assert(ShiftRegistry.Active(fakePlayerId) == "career_parcel",
+        "Ownership must survive forged unlock")
+    assert(ShiftRegistry.Release(fakePlayerId, "career_parcel"),
+        "Worker may finish or cancel shift")
+    assert(ShiftRegistry.Claim(fakePlayerId, "legacy_taxi"),
+        "A player can accept another job after release")
+    assert(ShiftRegistry.Release(fakePlayerId, "legacy_taxi"),
+        "Shared shift lock cleaned for subsequent tests")
     assert(driving >= 6 and foot >= 8, "Both road and walking careers required")
     local remote = game:GetService("ReplicatedStorage"):FindFirstChild("StreetCityCareerStatus")
     assert(remote and remote:IsA("RemoteEvent"), "Missing authoritative mission HUD updates")
