@@ -62,7 +62,7 @@ local function awaitPlayable(player: Player)
         end
         local ray = RaycastParams.new()
         ray.FilterType = Enum.RaycastFilterType.Exclude
-        local exclusions = {char}
+        local exclusions: {Instance} = {char}
         local vehicles = workspace:FindFirstChild("ActiveVehicles")
         if vehicles then table.insert(exclusions, vehicles) end
         ray.FilterDescendantsInstances = exclusions
