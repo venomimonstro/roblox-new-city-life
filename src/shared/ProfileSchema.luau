@@ -35,6 +35,7 @@ function Schema.New(userId: number?)
         homeCredits = 0, medicalDebt = 0, deathCount = 0,
         securityBonds = {},
         bountyClaims = {},
+        securityDividendAt = {},
         skills = {}, morality = 0,
         nutrition = 80, fitness = 15, bodyFat = 25,
         allegiance = "independent", allegianceChangedAt = 0,
@@ -157,6 +158,7 @@ function Schema.Decode(raw: any): any?
     local homeCredits, medicalDebt, deathCount = 0, 0, 0
     local securityBonds = {}
     local bountyClaims: {[string]: number} = {}
+    local securityDividendAt: {[string]: number} = {}
     if raw.schemaVersion == 4 then
         if raw.homeCredits ~= nil then
             if not int(raw.homeCredits, 0, 10000000000) then return nil end
@@ -180,6 +182,17 @@ function Schema.Decode(raw: any): any?
                     or victimId:match("^%d+$") == nil
                     or not int(lastPaidAt, 0, 5000000000) then return nil end
                 bountyClaims[victimId] = lastPaidAt
+            end
+        end
+        if raw.securityDividendAt ~= nil then
+            if type(raw.securityDividendAt) ~= "table" then return nil end
+            local districts = require(script.Parent:WaitForChild("DistrictConfig"))
+            local allowed: {[string]: boolean} = {}
+            for _, district in districts do allowed[district.id] = true end
+            for districtId, paidAt in pairs(raw.securityDividendAt) do
+                if allowed[districtId] ~= true
+                    or not int(paidAt, 0, 5000000000) then return nil end
+                securityDividendAt[districtId] = paidAt
             end
         end
         if raw.securityBonds ~= nil then
@@ -218,6 +231,7 @@ function Schema.Decode(raw: any): any?
         homeCredits = homeCredits, medicalDebt = medicalDebt,
         deathCount = deathCount, securityBonds = securityBonds,
         bountyClaims = bountyClaims,
+        securityDividendAt = securityDividendAt,
         bankCredits = bankCredits, communityBankCredits = communityBankCredits,
         stolenGoods = stolenGoods, nutrition = nutrition, fitness = fitness,
         bodyFat = bodyFat, realEstate = propertyInfo, ownedProperties = deeds,
