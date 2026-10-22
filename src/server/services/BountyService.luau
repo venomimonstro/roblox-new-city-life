@@ -63,7 +63,9 @@ function Bounties.ResolveDeath(victim: Player, human: Humanoid,
     settling[id] = true
     pairCooldown[pairKey] = now
     victimCooldown[id] = now
-    local op = "bounty_" .. HttpService:GenerateGUID(false):gsub("-", "")
+    -- Stable window key helps the profile journal reject repeated payouts
+    -- after reconnecting to another server within the same half-hour.
+    local op = "bounty_" .. tostring(id) .. "_" .. tostring(math.floor(os.time() / 1800))
     local success = Profile.Mutate(hunter, function(profile)
         return Economy.BountyReward(profile, stars, op)
     end)
@@ -88,7 +90,8 @@ function Bounties.ResolveDeath(victim: Player, human: Humanoid,
                 local portfolio = Profile.Read(investor)
                 if portfolio and (portfolio.securityBonds[district] or 0) > 0 then
                     dividendCooldown[investor.UserId] = now
-                    local dividendOp = "security_" .. HttpService:GenerateGUID(false):gsub("-", "")
+                    local dividendOp = "security_" .. district
+                        .. "_" .. tostring(math.floor(os.time() / 600))
                     local paid = Profile.Mutate(investor, function(profile)
                         return Economy.SecurityDividend(profile, district, dividendOp)
                     end)
@@ -139,6 +142,42 @@ function Bounties.Start()
     end
     Players.PlayerAdded:Connect(joined)
     for _, player in Players:GetPlayers() do joined(player) end
+    local funding = Instance.new("Part")
+    funding.Name = "DistrictSecurityShares"
+    funding.Anchored = true
+    funding.CanCollide = false
+    funding.CanQuery = false
+    funding.CanTouch = false
+    funding.Size = Vector3.new(6, 2, 4)
+    funding.Material = Enum.Material.Neon
+    funding.Color = Color3.fromRGB(56, 163, 110)
+    funding.Position = Vector3.new(164, 2, 28)
+    funding.Parent = world
+    local finance = Instance.new("ProximityPrompt")
+    finance.ObjectText = "City Security Fund"
+    finance.ActionText = "Invest 1250 credits"
+    finance.MaxActivationDistance = 10
+    finance.RequiresLineOfSight = false
+    finance.Parent = funding
+    finance.Triggered:Connect(function(player: Player)
+        local human = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+        local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+        if not human or human.Health <= 0 or human.SeatPart or not root
+            or not root:IsA("BasePart") or not Profile.IsLoaded(player)
+            or (root.Position - funding.Position).Magnitude > 13 then return end
+        local district = Society.Resolve(root.Position)
+        local operation = "safety_" .. HttpService:GenerateGUID(false):gsub("-", "")
+        local ok = Profile.Mutate(player, function(profile)
+            return Economy.InvestSafety(profile, district, operation)
+        end)
+        if ok then
+            Society.EffectForPlayer(player, "security", 3)
+            notice:FireClient(player,
+                "District safety stake purchased. Eligible confirmed arrests may earn BANK dividends.")
+        else
+            notice:FireClient(player, "Insufficient cash or safety stake limit reached (3 per district)")
+        end
+    end)
     Players.PlayerRemoving:Connect(function(player)
         spawnedAt[player.UserId] = nil
         victimCooldown[player.UserId] = nil
