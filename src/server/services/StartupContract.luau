@@ -65,6 +65,18 @@ function Contract.Validate()
     requireChild(jobs, "Fish_Cast", "BasePart")
     requireChild(jobs, "Fish_Catch", "BasePart")
     requireChild(jobs, "Fish_Sell", "BasePart")
+    local careers = requireChild(world, "LegalCareers", "Folder")
+    local jobCatalog = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("LegalCareerCatalog"))
+    for _, job in jobCatalog do
+        local stand = requireChild(careers, "CareerStart_" .. job.id, "BasePart")
+        requireChild(stand, "CareerPrompt", "ProximityPrompt")
+        assert(not stand.CanCollide and not stand.CanQuery,
+            "[StreetCity Gate] Career stand obstructs road")
+    end
+    local clinic = requireChild(world, "StreetCityHospital", "Folder")
+    requireChild(clinic, "RepayMedicalDebt", "BasePart")
+    local bountyBoard = requireChild(world, "PoliceBountyBoard", "BasePart")
+    requireChild(bountyBoard, "ProximityPrompt", "ProximityPrompt")
     for index = 1, #Course.Points do
         local marker = requireChild(world, "CircuitCheckpoint_" .. tostring(index), "BasePart")
         assert(not marker.CanCollide and not marker.CanQuery,
@@ -93,6 +105,12 @@ function Contract.Validate()
     requireChild(remotes, "GarageNotice", "RemoteEvent")
     requireChild(ReplicatedStorage, "StreetCityWantedState", "RemoteEvent")
     requireChild(ReplicatedStorage, "StreetCityProfileState", "RemoteEvent")
+    requireChild(ReplicatedStorage, "StreetCityCareerStatus", "RemoteEvent")
+    requireChild(ReplicatedStorage, "StreetCityWantedPosters", "RemoteEvent")
+    for _, home in residential:GetChildren() do
+        requireChild(home, "HomeCash_Deposit", "BasePart")
+        requireChild(home, "HomeCash_Withdraw", "BasePart")
+    end
     print("[StreetCity Gate] PASS: critical world, player flow, dealer, race and remotes")
 end
 
