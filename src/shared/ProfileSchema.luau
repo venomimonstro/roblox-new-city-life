@@ -5,6 +5,7 @@ local Build = require(script.Parent:WaitForChild("VehicleBuild"))
 local Vehicles = require(script.Parent:WaitForChild("VehicleCatalog"))
 local Offers = require(script.Parent:WaitForChild("ShopCatalog"))
 local Properties = require(script.Parent:WaitForChild("PropertyCatalog"))
+local Progress = require(script.Parent:WaitForChild("SkillProgression"))
 local Schema = {}
 local MAX_CARS = 8
 local MAX_ITEMS = 48
@@ -33,6 +34,7 @@ function Schema.New(userId: number?)
         credits = 0, bankCredits = 0, communityBankCredits = 0, stolenGoods = 0,
         homeCredits = 0, medicalDebt = 0, deathCount = 0,
         securityBonds = {},
+        skills = {}, morality = 0,
         nutrition = 80, fitness = 15, bodyFat = 25,
         allegiance = "independent", allegianceChangedAt = 0,
         guards = 0, henchmen = 0,
@@ -178,8 +180,27 @@ function Schema.Decode(raw: any): any?
             end
         end
     end
+    local skills = {}
+    local morality = 0
+    if raw.schemaVersion == 4 then
+        if raw.morality ~= nil then
+            if not int(raw.morality, -100, 100) then return nil end
+            morality = raw.morality
+        end
+        if raw.skills ~= nil then
+            if type(raw.skills) ~= "table" then return nil end
+            local count = 0
+            for skillId, xp in pairs(raw.skills) do
+                count += 1
+                if count > 24 or not Progress.ValidSkill(skillId)
+                    or not int(xp, 0, 1000000) then return nil end
+                skills[skillId] = xp
+            end
+        end
+    end
     return {
         schemaVersion = 4, credits = raw.credits,
+        skills = skills, morality = morality,
         homeCredits = homeCredits, medicalDebt = medicalDebt,
         deathCount = deathCount, securityBonds = securityBonds,
         bankCredits = bankCredits, communityBankCredits = communityBankCredits,
