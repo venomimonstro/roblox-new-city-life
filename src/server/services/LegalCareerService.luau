@@ -93,7 +93,7 @@ local function launch(player: Player, definition: any, pad: Part)
     running[id] = {
         definition = definition, status = "active", stage = 1,
         origin = root.Position, lastPosition = root.Position,
-        began = os.clock(), startedAt = os.clock(), moved = 0,
+        began = os.clock(), startedAt = os.clock(), lastSampleAt = os.clock(), moved = 0,
         movingInCar = false, lastDrivenAt = -100, lastDrivenPosition = nil,
         operation = "career_" .. HttpService:GenerateGUID(false):gsub("-", ""),
         missionId = sessionsStarted,
@@ -161,10 +161,12 @@ local function advance(player: Player, job: any, now: number, pos: Vector3)
         then validVehicle or parkedAtStop else isOnFoot
     local prior = job.lastPosition
     local change = (Vector3.new(pos.X, 0, pos.Z) - Vector3.new(prior.X, 0, prior.Z)).Magnitude
+    local sampleElapsed = now - (job.lastSampleAt or now)
+    job.lastSampleAt = now
     job.lastPosition = pos
     -- A teleport is not legitimate work movement; require a fresh walk/drive
     -- after the jump and never count the jump itself toward the mission.
-    if change > 55 then
+    if change > CareerRules.MaximumMovementForSample(sampleElapsed, mode) then
         job.moved = 0
         job.lastDrivenPosition = nil
         job.lastDrivenAt = -100
@@ -176,7 +178,7 @@ local function advance(player: Player, job: any, now: number, pos: Vector3)
     -- 0.35s tick at <=150stud/s; jump/teleport spikes do not count.
     -- Count only motion observed in the required mode. This stops an
     -- unattended/AI car or another player's vehicle from completing a shift.
-    if change > 0 and change < 55 then
+    if change > 0 then
         if mode == "vehicle" and validVehicle then
             job.moved += change
             job.lastDrivenPosition = pos
@@ -195,6 +197,7 @@ local function advance(player: Player, job: any, now: number, pos: Vector3)
     job.stage += 1
     job.origin = pos
     job.lastPosition = pos
+    job.lastSampleAt = now
     job.began = now
     job.moved = 0
     job.lastDrivenPosition = nil
