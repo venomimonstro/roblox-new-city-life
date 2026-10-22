@@ -94,6 +94,7 @@ local function launch(player: Player, definition: any, pad: Part)
         definition = definition, status = "active", stage = 1,
         origin = root.Position, lastPosition = root.Position,
         began = os.clock(), startedAt = os.clock(), moved = 0,
+        movingInCar = false,
         operation = "career_" .. HttpService:GenerateGUID(false):gsub("-", ""),
         missionId = sessionsStarted,
     }
@@ -143,10 +144,10 @@ local function advance(player: Player, job: any, now: number, pos: Vector3)
     local mode = definition.mode
     if job.status ~= "active" then return end
     local validVehicle = transportState(player)
-    local isValidTransport = if mode == "vehicle" then validVehicle
-        else not (player.Character
-            and player.Character:FindFirstChildOfClass("Humanoid")
-            and player.Character:FindFirstChildOfClass("Humanoid").SeatPart)
+    local character = player.Character
+    local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+    local isOnFoot = humanoid ~= nil and humanoid.SeatPart == nil
+    local isValidTransport = if mode == "vehicle" then validVehicle else isOnFoot
     local prior = job.lastPosition
     local change = (Vector3.new(pos.X, 0, pos.Z) - Vector3.new(prior.X, 0, prior.Z)).Magnitude
     job.lastPosition = pos
@@ -160,8 +161,9 @@ local function advance(player: Player, job: any, now: number, pos: Vector3)
         return
     end
     -- 0.35s tick at <=150stud/s; jump/teleport spikes do not count.
-    if change > 0 and change < 55 and (mode ~= "vehicle" or validVehicle)
-        and (mode ~= "foot" or isValidTransport) then
+    -- Count only motion observed in the required mode. This stops an
+    -- unattended/AI car or another player's vehicle from completing a shift.
+    if change > 0 and change < 55 and isValidTransport then
         job.moved += change
     end
     local target = definition.stops[job.stage]
