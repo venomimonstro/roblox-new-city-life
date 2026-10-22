@@ -4,6 +4,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
 local VehicleMath = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("VehicleMath"))
+local Damage = require(ReplicatedStorage.Shared:WaitForChild("VehicleDamageRules"))
 local Factory = require(script.Parent:WaitForChild("VehicleFactory"))
 local Powertrain = require(ReplicatedStorage.Shared:WaitForChild("Powertrain"))
 local VehicleBuild = require(ReplicatedStorage.Shared:WaitForChild("VehicleBuild"))
@@ -22,6 +23,8 @@ local inputThrottle: { [number]: number } = {}
 local inputState: { [Model]: { throttle: number, steer: number, last: number } } = {}
 local ownershipConnections: { [Model]: RBXScriptConnection } = {}
 local raycastCache: {[Model]: RaycastParams} = {}
+local priorVelocity: {[Model]: number} = {}
+local priorImpactAt: {[Model]: number} = {}
 local driveState: { [Model]: { gear: number, rpm: number, signature: string, spec: any?, lastTelemetry: number } } = {}
 
 local function isDriver(player: Player, car: Factory.Car): boolean
@@ -86,12 +89,35 @@ local function updateCar(car: Factory.Car)
                 * CFrame.Angles(0, home.heading, 0))
             root.AssemblyLinearVelocity = Vector3.zero
             root.AssemblyAngularVelocity = Vector3.zero
+            priorVelocity[car.Model] = nil -- no teleport-induced damage
             car.Model:SetAttribute("StreetCityWorldRescues",
                 (car.Model:GetAttribute("StreetCityWorldRescues") or 0) + 1)
             return
         end
     end
     local vel = root.AssemblyLinearVelocity
+    local previous = priorVelocity[car.Model]
+    local speed = vel.Magnitude
+    priorVelocity[car.Model] = speed
+    -- Only impacts with a genuine speed discontinuity count, NOT ordinary
+    -- acceleration, free fall, a respawn teleport or ground raycast loss.
+    if previous and car.Model:GetAttribute("VehicleHealth") ~= nil
+        and os.clock() - (priorImpactAt[car.Model] or -1000) > 0.9 then
+        local impact = Damage.Impact(math.max(0, previous - speed), previous,
+            root.Position.Y > -5, seat.Occupant ~= nil)
+        if impact.damage > 0 then
+            local current = car.Model:GetAttribute("VehicleHealth")
+            if type(current) == "number" then
+                local nextHealth = math.max(0, current - impact.damage)
+                car.Model:SetAttribute("VehicleHealth", nextHealth)
+                car.Model:SetAttribute("VehicleCondition", Damage.Status(nextHealth))
+                priorImpactAt[car.Model] = os.clock()
+                if seat.Occupant and impact.occupantDamage > 0 then
+                    seat.Occupant:TakeDamage(impact.occupantDamage)
+                end
+            end
+        end
+    end
     local fwd = root.CFrame.LookVector
     local right = root.CFrame.RightVector
     local longitudinal = vel:Dot(fwd)
@@ -111,7 +137,9 @@ local function updateCar(car: Factory.Car)
     local npcDriving = occupant == nil and car.Model:GetAttribute("TrafficNPC") == true
     local live = (authorized or npcDriving) and input ~= nil
         and os.clock() - input.last < (if npcDriving then 0.8 else 0.45)
-    local drive = if live then input.throttle else 0
+    local health = car.Model:GetAttribute("VehicleHealth")
+    local driveFactor = if type(health) == "number" then Damage.DriveFactor(health) else 1
+    local drive = if live then input.throttle * driveFactor else 0
     local steer = if live then input.steer else 0
     -- Early simulation integration: gear ratios affect drive acceleration. The chassis
     -- is still arcade physics; wheel/suspension constraints are a later milestone.
@@ -231,6 +259,8 @@ function VehicleService.SpawnForPlayer(player: Player, build: any, position: Vec
     end
     local car: Factory.Car = created
     Factory.ApplyCatalog(car, build.catalogId)
+    car.Model:SetAttribute("VehicleHealth", 100)
+    car.Model:SetAttribute("VehicleCondition", "operational")
     car.Model:SetAttribute("EngineId", build.engineId)
     car.Model:SetAttribute("GearboxId", build.gearboxId)
     car.Model:SetAttribute("TireId", build.tireId)
@@ -261,6 +291,8 @@ function VehicleService.SpawnTrafficVehicle(catalogId: string, position: Vector3
     car.Model:SetAttribute("EngineId", build.engineId)
     car.Model:SetAttribute("GearboxId", build.gearboxId)
     car.Model:SetAttribute("TireId", build.tireId)
+    car.Model:SetAttribute("VehicleHealth", 100)
+    car.Model:SetAttribute("VehicleCondition", "operational")
     car.Model:SetAttribute("TrafficNPC", true)
     car.Model:SetAttribute("IsPolice", isPolice == true)
     table.insert(cars, car)
@@ -303,6 +335,8 @@ function VehicleService.Despawn(car: Factory.Car)
     car.SuspensionForce.Force = Vector3.zero
     inputState[car.Model] = nil
     raycastCache[car.Model] = nil
+    priorVelocity[car.Model] = nil
+    priorImpactAt[car.Model] = nil
     car.Model:Destroy()
 end
 
