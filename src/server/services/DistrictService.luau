@@ -1,6 +1,7 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Districts = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("DistrictConfig"))
+local Architecture = require(script.Parent:WaitForChild("CityArchitecture"))
 local DistrictService = {}
 
 local function createPart(parent: Instance, name: string, size: Vector3, position: Vector3, material: Enum.Material, color: Color3)
@@ -34,7 +35,7 @@ function DistrictService.Start()
             if district.id == "coast" then Color3.fromRGB(225, 205, 157) else Color3.fromRGB(85, 136, 84))
         for n = 1, district.buildingCount do
             local height = rng:NextInteger(14, if district.id == "downtown" then 95 else 38)
-            createPart(zone, "Building_" .. n, Vector3.new(30, height, 30),
+            local core = createPart(zone, "Building_" .. n, Vector3.new(30, height, 30),
                 -- Roads are on 100-stud grid lines, width 25 studs.
                 -- Center every building halfway BETWEEN grid lines. The old
                 -- +25 offset intersected road collision by ~2.5 studs.
@@ -42,6 +43,7 @@ function DistrictService.Start()
                     height / 2 - 1, math.floor(z / 100) * 100
                         + (math.floor((n - 1) / 4) - 1) * 100 + 50),
                 Enum.Material.Concrete, Color3.fromRGB(130 + index * 8, 135, 148))
+            Architecture.DecorateBuilding(zone, core, district.id, n)
         end
         -- WorldService owns ALL connected roads; no extra diagonal or
         -- off-grid connectors can clip district buildings.
