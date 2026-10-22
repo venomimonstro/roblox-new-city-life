@@ -209,17 +209,29 @@ function Transport.Start()
         if not state or seat ~= state.vehicle.Seat or seat.Occupant ~= humanoid then return end
         state.input = {throttle=throttle, steer=steer, last=now}
     end)
-    -- Placed near actual roads or coastline; airplane on a reserved airfield.
+    -- Wide, non-invisible runway approach for the aircraft physics prototype.
+    local runway = Instance.new("Part")
+    runway.Name = "LightAircraftRunway"
+    runway.Size = Vector3.new(30, 1, 480)
+    runway.Position = Vector3.new(1200, -0.35, -1300)
+    runway.Anchored = true
+    runway.CanCollide = true
+    runway.CanQuery = true
+    runway.Material = Enum.Material.Asphalt
+    runway.Color = Color3.fromRGB(60, 66, 72)
+    runway.Parent = folder
+    -- Placed on road lanes, over actual Terrain water, or on runway.
     for _, site in {
-        {id="bicycle",x=200,z=320,y=5,h=0},
-        {id="motorcycle",x=300,z=320,y=5,h=0},
-        {id="dirtbike",x=-300,z=320,y=5,h=0},
-        {id="truck",x=400,z=320,y=6,h=0},
-        {id="tractor",x=-400,z=320,y=6,h=0},
-        {id="bus",x=500,z=320,y=6,h=0},
-        {id="speedboat",x=1000,z=800,y=8,h=0},
-        {id="fishingboat",x=1100,z=800,y=8,h=0},
-        {id="propplane",x=1200,z=-800,y=12,h=0},
+        {id="bicycle",x=200,z=300,y=5,h=0},
+        {id="motorcycle",x=300,z=300,y=5,h=0},
+        {id="dirtbike",x=-300,z=300,y=5,h=0},
+        {id="truck",x=400,z=300,y=6,h=0},
+        {id="tractor",x=-400,z=300,y=6,h=0},
+        {id="bus",x=500,z=300,y=6,h=0},
+        -- Terrain water in WorldService is centred at z=2124, NOT at z=800.
+        {id="speedboat",x=-100,z=2124,y=3,h=0},
+        {id="fishingboat",x=100,z=2124,y=3,h=0},
+        {id="propplane",x=1200,z=-1500,y=7,h=math.pi},
     } do
         local ok, result = pcall(newVehicle, site.id,
             Vector3.new(site.x,site.y,site.z), site.h)
