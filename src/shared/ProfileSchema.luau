@@ -175,7 +175,7 @@ function Schema.Decode(raw: any): any?
             local count = 0
             for victimId, lastPaidAt in pairs(raw.bountyClaims) do
                 count += 1
-                if count > 20 or type(victimId) ~= "string"
+                if count > 128 or type(victimId) ~= "string"
                     or #victimId < 1 or #victimId > 20
                     or victimId:match("^%d+$") == nil
                     or not int(lastPaidAt, 0, 5000000000) then return nil end
