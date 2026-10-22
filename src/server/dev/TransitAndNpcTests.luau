@@ -2,6 +2,7 @@
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Map = require(Shared:WaitForChild("TransitMap"))
 local Life = require(Shared:WaitForChild("NpcLifeRules"))
+local Transit = require(script.Parent.Parent:WaitForChild("services"):WaitForChild("PublicTransitService"))
 local Test = {}
 function Test.Run()
     assert(#Map.Metro == 3 and #Map.Bus == 5, "Transit stop count changed")
@@ -23,6 +24,11 @@ function Test.Run()
         assert(platformGate and platformGate:FindFirstChildOfClass("ProximityPrompt")
             and exit and exit:FindFirstChildOfClass("ProximityPrompt"),
             "Metro must allow street-platform-ride-street journey")
+        assert(Transit.CheckArrivalForTests(
+            Vector3.new(stop.x + 15, Map.MetroDepth + 2, 9)),
+            "Metro destination has no safe collision floor for player")
+        assert(Transit.CheckArrivalForTests(entrance.Position + Vector3.new(7, 2, 0)),
+            "Metro street exit has unsafe collision geometry")
     end
     for _, stop in Map.Bus do
         local station = root:FindFirstChild("BusStop_" .. stop.id)
@@ -30,7 +36,20 @@ function Test.Run()
             "Bus stop has no boarding prompt")
         assert(not station.CanCollide and not station.CanQuery,
             "Bus station blocks a city roadway")
+        assert(Transit.CheckArrivalForTests(stop.pos),
+            "Bus terminal would charge fare without a safe destination")
     end
+    local blocker = Instance.new("Part")
+    blocker.Name = "TransitBlockedLandingTest"
+    blocker.Size = Vector3.new(6, 6, 6)
+    blocker.Position = Vector3.new(200, 2, 0)
+    blocker.Anchored = true
+    blocker.CanCollide = true
+    blocker.CanQuery = true
+    blocker.Parent = workspace
+    local blocked = not Transit.CheckArrivalForTests(Vector3.new(200, 2, 0))
+    blocker:Destroy()
+    assert(blocked, "Transit arrival must reject a fake walkable roof / obstruction")
     assert(root:FindFirstChild("CityBusNPC"), "City bus visual agent missing")
     local count = 0
     for i = 1, 28 do
