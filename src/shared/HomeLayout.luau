@@ -27,7 +27,7 @@ function Layout.Plot(slot: number): any?
         house = Vector3.new(x, 0, sign * 258),
         garage = Vector3.new(x, 0, sign * 229),
         car = Vector3.new(x, 3.4, sign * 226),
-        respawn = Vector3.new(x + 7, 3.5, sign * 245),
+        respawn = Vector3.new(x + 10, 3.5, sign * 245), -- clear of house wall and garage eaves
         heading = if row == 0 then math.pi else 0,
         district = if row == 0 then "South Residential" else "North Residential",
     }
