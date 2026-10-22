@@ -144,8 +144,8 @@ function Jobs.Start()
                 end
             end)
     end
-    local shore = Vector3.new(20, 2, 466)
-    local market = Vector3.new(20, 2, 408)
+    local shore = Vector3.new(20, 2, 1935) -- real beach, away from traffic lanes
+    local market = Vector3.new(20, 2, 1865) -- roadside fish market by the shore
     pad(root, "Fish_Cast", shore, "Fishing Pier",
         "Cast fishing line", Color3.fromRGB(51, 139, 191), function(player)
             local id = player.UserId
