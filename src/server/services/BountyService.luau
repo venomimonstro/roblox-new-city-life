@@ -93,8 +93,9 @@ function Bounties.ResolveDeath(victim: Player, human: Humanoid,
                     dividendCooldown[investor.UserId] = now
                     local dividendOp = "security_" .. district
                         .. "_" .. tostring(math.floor(os.time() / 600))
+                    local dividendAt = os.time()
                     local paid = Profile.Mutate(investor, function(profile)
-                        return Economy.SecurityDividend(profile, district, dividendOp)
+                        return Economy.SecurityDividend(profile, district, dividendOp, dividendAt)
                     end)
                     if paid then
                         notice:FireClient(investor, "District safety dividend credited to your bank")
