@@ -14,6 +14,58 @@ local lastInput: {[number]: number} = {}
 local RESPAWN_SECONDS = 18
 local DEPTH = 4.5
 
+local function visual(model: Model, chassis: Part, name: string,
+    size: Vector3, relative: CFrame, color: Color3, shape: Enum.PartType?)
+    local p = Instance.new("Part")
+    p.Name = name
+    p.Size = size
+    p.Shape = shape or Enum.PartType.Block
+    p.Material = Enum.Material.Metal
+    p.Color = color
+    p.CanCollide = false
+    p.CanQuery = false
+    p.CanTouch = false
+    p.Massless = true
+    p.Anchored = false
+    p.CFrame = chassis.CFrame * relative
+    p.Parent = model
+    local weld = Instance.new("WeldConstraint")
+    weld.Part0 = chassis
+    weld.Part1 = p
+    weld.Parent = p
+end
+
+local function appearance(model: Model, chassis: Part, typeId: string, kind: string)
+    if kind == "cycle" then
+        for _, z in {-1.8, 1.8} do
+            visual(model, chassis, "SpokedWheel", Vector3.new(2.2, 0.32, 2.2),
+                CFrame.new(0, -0.4, z) * CFrame.Angles(0, 0, math.pi/2),
+                Color3.fromRGB(25, 27, 33), Enum.PartType.Cylinder)
+        end
+        visual(model, chassis, "Handlebars", Vector3.new(2.3, 0.19, 0.25),
+            CFrame.new(0, 1.55, -1.1), Color3.fromRGB(181, 190, 196), nil)
+    elseif kind == "air" then
+        visual(model, chassis, "WingLeft", Vector3.new(13, 0.35, 3),
+            CFrame.new(-6.6, 0.45, 0), Color3.fromRGB(198, 205, 213), nil)
+        visual(model, chassis, "WingRight", Vector3.new(13, 0.35, 3),
+            CFrame.new(6.6, 0.45, 0), Color3.fromRGB(198, 205, 213), nil)
+        visual(model, chassis, "VerticalTail", Vector3.new(0.4, 4, 2.8),
+            CFrame.new(0, 2.3, 7), Color3.fromRGB(190, 204, 210), nil)
+        visual(model, chassis, "Propeller", Vector3.new(6, 0.22, 0.2),
+            CFrame.new(0, 0.15, -9.2), Color3.fromRGB(30, 37, 45), nil)
+    elseif kind == "water" then
+        visual(model, chassis, "BoatBow", Vector3.new(6.1, 1.7, 3.1),
+            CFrame.new(0, -0.2, -7), Color3.fromRGB(60, 130, 175), nil)
+        visual(model, chassis, "Cabin", Vector3.new(4.4, 2.5, 5.5),
+            CFrame.new(0, 2.2, 1), Color3.fromRGB(206, 216, 222), nil)
+    else
+        visual(model, chassis, "CargoCab", Vector3.new(6, 2.8, 3.5),
+            CFrame.new(0, 2.1, -3.6), Color3.fromRGB(132, 159, 94), nil)
+        visual(model, chassis, "CargoBody", Vector3.new(6.5, 2.1, 7.5),
+            CFrame.new(0, 1.2, 3.5), Color3.fromRGB(76, 93, 100), nil)
+    end
+end
+
 local function newVehicle(typeId: string, position: Vector3, heading: number): any?
     local spec = Specs[typeId]
     if not spec then return nil end
@@ -45,6 +97,7 @@ local function newVehicle(typeId: string, position: Vector3, heading: number): a
         elseif spec.kind == "water" then Color3.fromRGB(50, 127, 173)
         elseif spec.kind == "cycle" then Color3.fromRGB(214, 91, 74)
         else Color3.fromRGB(133, 161, 90)
+    appearance(model, root, typeId, spec.kind)
     local label = created.Seat:FindFirstChildOfClass("ProximityPrompt")
     if label then label.ObjectText = typeId end
     -- Artificial body mass distributed inside the rigid assembly.
