@@ -264,7 +264,15 @@ function Jobs.Start()
                     local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
                     validMode = humanoid ~= nil and humanoid.SeatPart == nil
                 end
-                if delta > CareerRules.MaximumMovementForSample(elapsed, mode) then
+                if CareerRules.IsUnobservedSample(elapsed) then
+                    -- Server stalls and mobile reconnections are not proof
+                    -- of cheating. Do not credit unseen distance; keep the
+                    -- shift open and reset this route's verified progress.
+                    shift.moved = 0
+                    shift.drivenDistance = 0
+                    shift.began = now
+                    message(player, "Connection restored; complete your shift route again.")
+                elseif delta > CareerRules.MaximumMovementForSample(elapsed, mode) then
                     -- Teleporting must not move the mission origin to its goal.
                     active[id] = nil
                     ShiftRegistry.Release(id, "legacy_" .. shift.id)
