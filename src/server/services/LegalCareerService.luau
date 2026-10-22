@@ -175,6 +175,11 @@ local function advance(player: Player, job: any, now: number, pos: Vector3)
         job.lastDrivenPosition = nil
         job.lastDrivenAt = -100
         job.began = now
+        -- The next leg starts at the last verified waypoint, not at the
+        -- new client-reported location after an unobserved disconnection.
+        -- A player arriving via teleport still has to traverse the route.
+        job.origin = if job.stage == 1 then job.definition.start
+            else job.definition.stops[job.stage - 1]
         send(player, job, "Connection resumed; travel this leg again to verify your shift.")
         return
     end
