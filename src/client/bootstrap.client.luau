@@ -612,7 +612,22 @@ RunService.RenderStepped:Connect(function(dt)
     panel.Visible = seat ~= nil
     guide.Text = if seat
         then "Гонка: зелёная площадка на центральной дороге. Затем магазин и гараж."
-        else "Вы дома: машина в гараже. Есть работа, рыбалка, NPC, угон и полиция."
+        else "Личный гараж, работа, рыбалка и NPC-жители доступны по всему городу."
+    local homePoint = player:GetAttribute("StreetCityHomePosition")
+    if not seat and typeof(homePoint) == "Vector3" then
+        local character = player.Character
+        local root = character and character:FindFirstChild("HumanoidRootPart")
+        if root and root:IsA("BasePart") then
+            local delta = Vector3.new(homePoint.X - root.Position.X, 0,
+                homePoint.Z - root.Position.Z)
+            if delta.Magnitude > 75 then
+                guide.Text = "Ваш дом: " .. tostring(math.floor(delta.Magnitude))
+                    .. " studs. Дороги непрерывны; ориентируйтесь по указателям районов."
+            else
+                guide.Text = "Дом рядом. Личная машина в гараже; здесь же сейф и отдых."
+            end
+        end
+    end
     if seat then
         vehicleInput:FireServer(seat.ThrottleFloat, seat.SteerFloat)
         local kmh = seat.AssemblyLinearVelocity.Magnitude * 0.28 * 3.6
