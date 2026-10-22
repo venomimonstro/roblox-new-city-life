@@ -71,7 +71,6 @@ function Architecture.DecorateBuilding(parent: Instance, core: Part, districtId:
     -- Keep distant windows/roof details as a small SLIM representation, not
     -- hundreds of full-resolution façade parts on low-memory clients.
     facade.LevelOfDetail = Enum.ModelLevelOfDetail.SLIM
-    facade.Parent = parent
     local floorCount = math.min(10, math.floor((core.Size.Y - 3) / 7.5))
     -- The core is a solid cheap collision volume; the visual facade is separate.
     for floor = 1, floorCount do
@@ -106,6 +105,9 @@ function Architecture.DecorateBuilding(parent: Instance, core: Part, districtId:
     detail(facade, "EntryLight", Vector3.new(1.8, 0.2, 0.8),
         CFrame.new(core.Position.X, core.Position.Y - core.Size.Y / 2 + 6, front - 2.0),
         Color3.fromRGB(243, 222, 161), Enum.Material.Neon)
+    -- Replicate finished static façade once rather than streaming each window
+    -- while the server is still assembling the neighborhood.
+    facade.Parent = parent
     return facade
 end
 
