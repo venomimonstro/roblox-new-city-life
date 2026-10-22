@@ -72,6 +72,7 @@ REQUIRED = (
     "src/server/services/RaceService.luau",
     "src/server/services/ProfileService.luau",
     "src/server/services/StartupContract.luau",
+    "src/server/services/WorldSurfaceAudit.luau",
     "tools/release_gate.py",
     "docs/architecture.md",
     "docs/roadmap.md",
@@ -349,6 +350,16 @@ def main() -> None:
         raise SystemExit("Traversal test missing population/road validation")
     if "Traffic agent failed" not in traffic_source or "createAgent(agent.points" not in traffic_source:
         raise SystemExit("Traffic regression: NPC recovery not enabled")
+
+    surface = (ROOT / "src/server/services/WorldSurfaceAudit.luau").read_text(encoding="utf-8")
+    if "WorldSurfaceAudit.Validate()" not in bootstrap:
+        raise SystemExit("P0: world collision surface audit not activated before server-ready")
+    for invariant in ("Enum.Material.Asphalt", "Homes.Capacity", "Districts",
+                      "workspace:Raycast", "road, neighborhood, garage"):
+        if invariant not in surface:
+            raise SystemExit("P0: world surface audit missing " + invariant)
+    if bootstrap.index("WorldSurfaceAudit.Validate()") > bootstrap.index("StartupContract.Validate()"):
+        raise SystemExit("P0: road collision audit must run before ready contract")
 
     workflows = ROOT / ".github" / "workflows"
     if workflows.exists() and any(workflows.iterdir()):
