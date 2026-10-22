@@ -71,7 +71,7 @@ function Test.Run()
     assert(citizens and #citizens:GetChildren() == count, "NPC population mismatch")
     for _, npc in citizens:GetChildren() do
         assert(npc:GetAttribute("Occupation") ~= nil
-            and npc:GetAttribute("Mood") ~= nil
+            and npc:GetAttribute("Mood") ~= nil,
             "NPC initial identity missing")
     end
     print("[StreetCity] PASS: metro, bus stops and 28 bounded NPC life simulations")
