@@ -293,6 +293,52 @@ ContextActionService:BindAction("CityEquipmentUse", useEquipment, true,
 ContextActionService:SetTitle("CityEquipmentUse", "Use")
 ContextActionService:SetPosition("CityEquipmentUse", UDim2.fromScale(0.82, 0.77))
 
+-- The route comes only from the authoritative server, never from a client
+-- request. It remains visible while driving, walking or using mobile buttons.
+local careerTarget: Vector3? = nil
+local careerName = ""
+local careerStage = 0
+local careerStops = 0
+local careerReward = 0
+local careerRoute = Instance.new("TextLabel")
+careerRoute.Name = "CareerNavigator"
+careerRoute.AnchorPoint = Vector2.new(1, 0)
+careerRoute.Position = UDim2.new(1, -14, 0, 65)
+careerRoute.Size = UDim2.fromOffset(304, 82)
+careerRoute.BackgroundColor3 = Color3.fromRGB(18, 29, 39)
+careerRoute.BackgroundTransparency = 0.09
+careerRoute.TextColor3 = Color3.fromRGB(218, 245, 230)
+careerRoute.TextSize = 14
+careerRoute.TextWrapped = true
+careerRoute.Font = Enum.Font.GothamSemibold
+careerRoute.Visible = false
+careerRoute.Parent = gui
+local careerCorner = Instance.new("UICorner")
+careerCorner.CornerRadius = UDim.new(0, 10)
+careerCorner.Parent = careerRoute
+
+task.spawn(function()
+    local careersRemote = ReplicatedStorage:WaitForChild("StreetCityCareerStatus", 20)
+    if not careersRemote or not careersRemote:IsA("RemoteEvent") then return end
+    careersRemote.OnClientEvent:Connect(function(title: any, stage: any,
+        stops: any, target: any, reward: any, _mode: any, _description: any)
+        if title == nil then
+            careerTarget = nil
+            careerRoute.Visible = false
+            return
+        end
+        if type(title) ~= "string" or #title > 60
+            or type(stage) ~= "number" or stage % 1 ~= 0 or stage < 1
+            or type(stops) ~= "number" or stops < stage or stops > 5
+            or typeof(target) ~= "Vector3" or type(reward) ~= "number" then return end
+        careerName = title
+        careerStage, careerStops = stage, stops
+        careerReward = reward
+        careerTarget = target
+        careerRoute.Visible = true
+    end)
+end)
+
 local elapsed = 0
 RunService.RenderStepped:Connect(function(dt)
     if workspace.CurrentCamera then
@@ -303,6 +349,27 @@ RunService.RenderStepped:Connect(function(dt)
         return
     end
     elapsed = 0
+    if careerTarget then
+        local character = player.Character
+        local root = character and character:FindFirstChild("HumanoidRootPart")
+        if root and root:IsA("BasePart") then
+            local offset = Vector3.new(careerTarget.X - root.Position.X, 0,
+                careerTarget.Z - root.Position.Z)
+            local meters = math.floor(offset.Magnitude + 0.5)
+            local aim = if offset.Magnitude > 0.1 then offset.Unit else Vector3.zero
+            local cross = root.CFrame.LookVector:Cross(aim).Y
+            local forward = root.CFrame.LookVector:Dot(aim)
+            local arrow = if forward < -0.3 then "↓"
+                elseif cross > 0.25 then "←"
+                elseif cross < -0.25 then "→"
+                else "↑"
+            careerRoute.Text = string.format(
+                "%s  %d/%d  •  +%d credits\n%s   %d studs to next stop",
+                careerName, careerStage, careerStops, careerReward, arrow, meters)
+        else
+            careerRoute.Text = careerName .. " — waiting for character"
+        end
+    end
     local seat = currentSeat()
     panel.Visible = seat ~= nil
     guide.Text = if seat
