@@ -182,10 +182,26 @@ function Bounties.Start()
     end)
     Players.PlayerRemoving:Connect(function(player)
         spawnedAt[player.UserId] = nil
-        victimCooldown[player.UserId] = nil
+        -- Keep current victim and investor cooldowns across a quick reconnect
+        -- to the same game server. Expired entries are removed below.
         settling[player.UserId] = nil
-        dividendCooldown[player.UserId] = nil
-        -- Pair cooldowns intentionally survive reconnects in the same server.
+    end)
+    -- Pairwise anti-collusion records must survive reconnects but not grow
+    -- indefinitely as new players visit a long-running public city.
+    task.spawn(function()
+        while true do
+            task.wait(600)
+            local now = os.clock()
+            for pair, last in pairs(pairCooldown) do
+                if now - last >= 1800 then pairCooldown[pair] = nil end
+            end
+            for id, last in pairs(victimCooldown) do
+                if now - last >= 1200 then victimCooldown[id] = nil end
+            end
+            for id, last in pairs(dividendCooldown) do
+                if now - last >= 600 then dividendCooldown[id] = nil end
+            end
+        end
     end)
     print("[StreetCity] Wanted posters and verified on-defeat bounties active")
 end
