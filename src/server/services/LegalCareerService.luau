@@ -10,6 +10,7 @@ local Wallet = require(ReplicatedStorage.Shared:WaitForChild("GarageTransactions
 local Catalog = require(ReplicatedStorage.Shared:WaitForChild("LegalCareerCatalog"))
 local CareerRules = require(ReplicatedStorage.Shared:WaitForChild("CareerRules"))
 local Society = require(script.Parent:WaitForChild("DistrictSocietyService"))
+local ShiftRegistry = require(script.Parent:WaitForChild("WorkShiftRegistry"))
 local Career = {}
 local running: {[number]: any} = {}
 local cooldown: {[number]: number} = {}
@@ -56,8 +57,10 @@ local function transportState(player: Player): boolean
 end
 
 local function endMission(player: Player, reason: string)
-    if running[player.UserId] then
+    local job = running[player.UserId]
+    if job then
         running[player.UserId] = nil
+        ShiftRegistry.Release(player.UserId, "career_" .. job.definition.id)
         send(player, nil, reason)
     end
 end
@@ -81,6 +84,10 @@ local function launch(player: Player, definition: any, pad: Part)
     local character = player.Character
     local root = character and character:FindFirstChild("HumanoidRootPart")
     if not root or not root:IsA("BasePart") then return end
+    if not ShiftRegistry.Claim(id, "career_" .. definition.id) then
+        notice:FireClient(player, "Another work shift is active. Finish or cancel it first.")
+        return
+    end
     sessionsStarted += 1
     running[id] = {
         definition = definition, status = "active", stage = 1,
@@ -108,6 +115,7 @@ local function settle(player: Player, job: any)
         if not safe then warn("[StreetCity] Career payout failed: " .. tostring(err)) end
         if running[id] ~= job then return end
         running[id] = nil
+        ShiftRegistry.Release(id, "career_" .. job.definition.id)
         if confirmed then
             cooldown[id] = os.clock() + 25
             Society.EffectForPlayer(player, "civic", 1)
@@ -204,6 +212,8 @@ function Career.Start()
     Players.PlayerAdded:Connect(connect)
     for _, player in Players:GetPlayers() do connect(player) end
     Players.PlayerRemoving:Connect(function(player)
+        local job = running[player.UserId]
+        if job then ShiftRegistry.Release(player.UserId, "career_" .. job.definition.id) end
         running[player.UserId] = nil
         cooldown[player.UserId] = nil
     end)
