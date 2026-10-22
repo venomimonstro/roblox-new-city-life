@@ -39,8 +39,10 @@ local function route(player: Player, def: any?)
     local remote = ReplicatedStorage:FindFirstChild("StreetCityCareerStatus")
     if not remote or not remote:IsA("RemoteEvent") then return end
     if not def then
+        player:SetAttribute("StreetCityWorkWaypoint", nil)
         remote:FireClient(player, nil)
     else
+        player:SetAttribute("StreetCityWorkWaypoint", def.finish)
         remote:FireClient(player, def.title, 1, 1, def.finish, def.reward,
             if def.driving then "vehicle" else "foot", "Travel to the worksite")
     end
