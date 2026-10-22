@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
 local CareerRules = require(ReplicatedStorage.Shared:WaitForChild("CareerRules"))
+local ShiftRegistry = require(script.Parent:WaitForChild("WorkShiftRegistry"))
 local ProfileService = require(script.Parent:WaitForChild("ProfileService"))
 local Rules = require(ReplicatedStorage.Shared:WaitForChild("GarageTransactions"))
 local Jobs = {}
@@ -93,6 +94,10 @@ function Jobs.Start()
                 if os.clock() < (cooldown[id] or 0) then return end
                 local rootPart = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
                 if not rootPart or not rootPart:IsA("BasePart") then return end
+                if not ShiftRegistry.Claim(id, "legacy_" .. def.id) then
+                    message(player, "Finish your active work shift first")
+                    return
+                end
                 active[id] = {id = def.id, began = os.clock(),
                     origin = rootPart.Position, lastPosition = rootPart.Position,
                     moved = 0, settling = false}
@@ -132,10 +137,12 @@ function Jobs.Start()
                 if active[id] ~= shift then return end
                 if paid then
                     active[id] = nil
+                    ShiftRegistry.Release(id, "legacy_" .. def.id)
                     cooldown[id] = os.clock() + 25
                     message(player, def.title .. ": +" .. tostring(def.reward) .. " credits")
                 else
                     active[id] = nil
+                    ShiftRegistry.Release(id, "legacy_" .. def.id)
                     cooldown[id] = os.clock() + 20
                     message(player, "Payment unconfirmed; check saved balance before another shift")
                 end
@@ -226,6 +233,8 @@ function Jobs.Start()
         local humanoid = character:WaitForChild("Humanoid", 10)
         if humanoid and humanoid:IsA("Humanoid") then
             humanoid.Died:Connect(function()
+                local old = active[player.UserId]
+                if old then ShiftRegistry.Release(player.UserId, "legacy_" .. old.id) end
                 active[player.UserId] = nil
             end)
         end
@@ -239,6 +248,8 @@ function Jobs.Start()
     end
     Players.PlayerRemoving:Connect(function(player)
         local id = player.UserId
+        local old = active[id]
+        if old then ShiftRegistry.Release(id, "legacy_" .. old.id) end
         active[id] = nil
         cooldown[id] = nil
         catches[id] = nil -- V1 session-only fish; persistent catch inventory is future work
