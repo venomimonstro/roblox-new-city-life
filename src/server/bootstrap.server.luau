@@ -81,6 +81,7 @@ local success, err = pcall(function()
     if RunService:IsStudio() then
         require(script.Parent:WaitForChild("dev"):WaitForChild("SmokeTests")).Run()
         require(script.Parent:WaitForChild("dev"):WaitForChild("CityTraversalTests")).Run()
+        require(script.Parent:WaitForChild("dev"):WaitForChild("CityInfillTests")).Run()
         require(script.Parent:WaitForChild("dev"):WaitForChild("WorldTraversalTests")).Run()
         require(script.Parent:WaitForChild("dev"):WaitForChild("TrafficSafetyTests")).Run()
         require(script.Parent:WaitForChild("dev"):WaitForChild("ScenarioTests")).Run()
