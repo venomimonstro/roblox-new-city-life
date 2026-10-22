@@ -74,6 +74,7 @@ local success, err = pcall(function()
     StartupContract.Validate()
     if RunService:IsStudio() then
         require(script.Parent:WaitForChild("dev"):WaitForChild("SmokeTests")).Run()
+        require(script.Parent:WaitForChild("dev"):WaitForChild("CityTraversalTests")).Run()
         require(script.Parent:WaitForChild("dev"):WaitForChild("WorldTraversalTests")).Run()
         require(script.Parent:WaitForChild("dev"):WaitForChild("ScenarioTests")).Run()
         require(script.Parent:WaitForChild("dev"):WaitForChild("SimulationTests")).Run()
