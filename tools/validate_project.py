@@ -561,6 +561,24 @@ def main() -> None:
         raise SystemExit("P0: career tests inspect endpoints only, not the road between")
 
 
+    # Durable bounty and public-safety payments must remain idempotent even
+    # after the bounded generic 40-operation wallet journal rolls over.
+    economy = (ROOT / "src/shared/LifeEconomy.luau").read_text(encoding="utf-8")
+    bounty = (ROOT / "src/server/services/BountyService.luau").read_text(encoding="utf-8")
+    death_tests = (ROOT / "src/server/dev/LifeEconomyTests.luau").read_text(encoding="utf-8")
+    schema = (ROOT / "src/shared/ProfileSchema.luau").read_text(encoding="utf-8")
+    for column in ("bountyClaims", "securityDividendAt"):
+        if column not in schema or column not in economy:
+            raise SystemExit("P0: durable anti-fraud column missing: " + column)
+    if "Economy.BountyReward(profile, stars, op, id, paidAt)" not in bounty:
+        raise SystemExit("P0: bounty not anchored to persistent victim identity and paidAt")
+    if "Economy.SecurityDividend(profile, district, dividendOp, dividendAt)" not in bounty:
+        raise SystemExit("P0: safety dividend not anchored to persistent district payment time")
+    if "bounty_durable_002" not in death_tests or "safety_claim_0002" not in death_tests:
+        raise SystemExit("P0: no wallet-rollover replay acceptance tests")
+    if "count > 128" not in schema or "count > 128" not in economy:
+        raise SystemExit("P0: victim-claim ledger would evict live public-server bounties")
+
     workflows = ROOT / ".github" / "workflows"
     if workflows.exists() and any(workflows.iterdir()):
         raise SystemExit("GitHub Actions workflows are explicitly disabled")
