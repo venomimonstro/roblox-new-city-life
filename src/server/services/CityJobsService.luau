@@ -33,6 +33,18 @@ local definitions = {
 local function message(player: Player, value: string)
     if player.Parent == Players then notice:FireClient(player, value) end
 end
+-- Both generations of legal jobs use the same client navigation panel.
+local function route(player: Player, def: any?)
+    if player.Parent ~= Players then return end
+    local remote = ReplicatedStorage:FindFirstChild("StreetCityCareerStatus")
+    if not remote or not remote:IsA("RemoteEvent") then return end
+    if not def then
+        remote:FireClient(player, nil)
+    else
+        remote:FireClient(player, def.title, 1, 1, def.finish, def.reward,
+            if def.driving then "vehicle" else "foot", "Travel to the worksite")
+    end
+end
 
 local function validPlayer(player: Player, position: Vector3): boolean
     if player.Parent ~= Players or not ProfileService.IsLoaded(player) then return false end
@@ -91,6 +103,7 @@ function Jobs.Start()
                     if active[id].id == def.id and not active[id].settling then
                         ShiftRegistry.Release(id, "legacy_" .. def.id)
                         active[id] = nil
+                        route(player, nil)
                         message(player, "Shift cancelled. You can choose another profession.")
                     else
                         message(player, "Finish the active job before switching professions")
@@ -107,6 +120,7 @@ function Jobs.Start()
                 active[id] = {id = def.id, began = os.clock(),
                     origin = rootPart.Position, lastPosition = rootPart.Position,
                     moved = 0, settling = false}
+                route(player, def)
                 message(player, def.title .. " started. Travel to the marked workplace.")
             end)
         pad(root, "JobFinish_" .. def.id, def.finish, def.title,
@@ -141,11 +155,13 @@ function Jobs.Start()
                 if paid then
                     active[id] = nil
                     ShiftRegistry.Release(id, "legacy_" .. def.id)
+                    route(player, nil)
                     cooldown[id] = os.clock() + 25
                     message(player, def.title .. ": +" .. tostring(def.reward) .. " credits")
                 else
                     active[id] = nil
                     ShiftRegistry.Release(id, "legacy_" .. def.id)
+                    route(player, nil)
                     cooldown[id] = os.clock() + 20
                     message(player, "Payment unconfirmed; check saved balance before another shift")
                 end
@@ -249,6 +265,7 @@ function Jobs.Start()
                 local old = active[player.UserId]
                 if old then ShiftRegistry.Release(player.UserId, "legacy_" .. old.id) end
                 active[player.UserId] = nil
+                route(player, nil)
             end)
         end
     end
