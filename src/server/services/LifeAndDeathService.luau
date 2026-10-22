@@ -63,8 +63,13 @@ local function bindCharacter(player: Player, character: Model)
         settled = true
         local stars = Wanted.GetLevel(player)
         local bountyEligible = Wanted.IsBountyEligible(player)
-        -- Only a confirmed server combat hit can collect a bounty.
-        Bounty.ResolveDeath(player, human, stars, bountyEligible)
+        -- Hunter and investor payouts can involve several DataStore writes.
+        -- They must not block the dying player's own hospital settlement or
+        -- cause lost home respawns under a slow database.
+        task.spawn(function()
+            local ok, err = pcall(Bounty.ResolveDeath, player, human, stars, bountyEligible)
+            if not ok then warn("[StreetCity] Bounty death handling: " .. tostring(err)) end
+        end)
         Wanted.ResetAfterDeath(player)
         if not Profile.IsLoaded(player) then return end
         local success = Profile.Mutate(player, function(profile)
