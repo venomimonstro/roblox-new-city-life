@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -100,6 +101,35 @@ def main() -> None:
     missing = [path for path in REQUIRED if not (ROOT / path).is_file()]
     if missing:
         raise SystemExit("MISSING: " + ", ".join(missing))
+
+    # Studio test-suite parse regression: an assert message must be separated
+    # from its preceding boolean condition with a comma. This catches the
+    # previously committed TransitAndNpcTests missing-comma failure.
+    missing_assert_comma = re.compile(
+        r"(?:~=|==)\\s*(?:nil|true|false)\\s*\\n\\s*\"[^\"\\n]+\"\\s*\\)"
+    )
+    for source in (ROOT / "src").rglob("*.luau"):
+        code = source.read_text(encoding="utf-8")
+        if missing_assert_comma.search(code):
+            raise SystemExit("Luau assertion parse regression (missing comma): "
+                             + str(source.relative_to(ROOT)))
+
+    transit = (ROOT / "src/server/services/PublicTransitService.luau").read_text(
+        encoding="utf-8"
+    )
+    before_fare = transit.split("local function ride(", 1)[-1].split(
+        "local charged =", 1)[0]
+    if "safeArrival(destination, character)" not in before_fare:
+        raise SystemExit("Transit charges fare before checking destination ground")
+    if "refundOperation" not in transit or "Wallet.AwardCredits" not in transit:
+        raise SystemExit("Transit cannot idempotently compensate failed trips")
+    if "GetPartBoundsInBox" not in transit or "StreetCity Transit" not in transit:
+        raise SystemExit("Transit has no safe avatar-volume landing validation")
+    transit_tests = (
+        ROOT / "src/server/dev/TransitAndNpcTests.luau"
+    ).read_text(encoding="utf-8")
+    if "Transit.CheckArrivalForTests" not in transit_tests:
+        raise SystemExit("Transit landing geometry has no Studio acceptance test")
 
     data = json.loads((ROOT / "default.project.json").read_text(encoding="utf-8"))
     tree = data["tree"]
