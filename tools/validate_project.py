@@ -325,6 +325,11 @@ def main() -> None:
         raise SystemExit("P0: asynchronous fish sale can pay twice")
     if "StreetCityCareerStatus" not in career_source:
         raise SystemExit("P0: route instructions not sent to players")
+    mini_map = (ROOT / "src/client/MapHUD.client.luau").read_text(encoding="utf-8")
+    if '"StreetCityWorkWaypoint"' not in mini_map:
+        raise SystemExit("P0: city minimap cannot render career waypoints")
+    if '"StreetCityWorkWaypoint"' not in career_source or '"StreetCityWorkWaypoint"' not in legacy_jobs:
+        raise SystemExit("P0: paid careers are missing server-created minimap waypoints")
     if "StreetCityCareerStatus" not in (ROOT / "src/client/bootstrap.client.luau").read_text(encoding="utf-8"):
         raise SystemExit("P0: mobile player cannot see mission waypoints")
     if "Economy.DeathSettlement" not in life_source or "Bounty.ResolveDeath" not in life_source:
