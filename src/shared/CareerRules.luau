@@ -12,12 +12,11 @@ function Rules.RequiredDistance(a: Vector3, b: Vector3): number
 end
 function Rules.CanFinishLeg(a: Vector3, b: Vector3, position: Vector3,
     seconds: number, verifiedMovement: number, mode: string,
-    validTransport: boolean): boolean
+    matchesRequiredMode: boolean): boolean
     if mode ~= "vehicle" and mode ~= "foot" then return false end
     if seconds < Rules.MinimumTravelSeconds(a, b, mode) then return false end
     if verifiedMovement < Rules.RequiredDistance(a, b) then return false end
-    if mode == "vehicle" and not validTransport then return false end
-    if mode == "foot" and validTransport then return false end
+    if not matchesRequiredMode then return false end
     if math.abs(position.Y - b.Y) > 12 then return false end
     return (Vector3.new(position.X, 0, position.Z)
         - Vector3.new(b.X, 0, b.Z)).Magnitude <= 18
