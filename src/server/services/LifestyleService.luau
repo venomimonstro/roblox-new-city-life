@@ -5,6 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
 local Profile = require(script.Parent:WaitForChild("ProfileService"))
 local Rules = require(ReplicatedStorage.Shared:WaitForChild("GarageTransactions"))
+local Progress = require(ReplicatedStorage.Shared:WaitForChild("SkillProgression"))
 local Health = {}
 local cooldowns: {[number]: number} = {}
 local current: {[number]: any} = {}
@@ -75,6 +76,9 @@ function Health.Start()
         {id="Salad", price=110, nutrition=30, fat=0, x=275, z=160},
         {id="Sandwich", price=70, nutrition=22, fat=1, x=-275, z=160},
         {id="Coffee", price=35, nutrition=9, fat=1, x=775, z=-260},
+        -- Age-inclusive venues sell non-alcoholic drinks only.
+        {id="FruitFizz", price=45, nutrition=12, fat=1, x=375, z=260},
+        {id="IcedTea", price=40, nutrition=10, fat=0, x=-375, z=260},
     } do
         pad(root, "Food_" .. food.id, Vector3.new(food.x, 2, food.z),
             "Buy and eat (" .. food.price .. " cash)",
@@ -126,13 +130,20 @@ function Health.Start()
                 end
                 local operation = op()
                 local confirmed = Profile.Mutate(player, function(profile)
-                    return Rules.Workout(profile, sport.gain, operation)
+                    if not Rules.Workout(profile, sport.gain, operation) then return false end
+                    -- No money duplication: XP is committed in same write as
+                    -- the workout receipt, and survives retries/rejoins.
+                    return Progress.Earn(profile, string.lower(sport.id), 40)
                 end)
                 if confirmed then
                     current[id] = nil
                     cooldowns[id] = os.clock()
                     applyBody(player)
-                    tell(player, sport.id .. " complete: fitness +" .. sport.gain)
+                    local updated = Profile.Read(player)
+                    local level = updated and Progress.Level(
+                        Progress.Xp(updated, string.lower(sport.id))) or 1
+                    tell(player, sport.id .. " complete: fitness +" .. sport.gain
+                        .. ", hobby level " .. tostring(level))
                 else
                     tell(player, "Rest and eat before training again")
                 end
