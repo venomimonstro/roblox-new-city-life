@@ -46,6 +46,7 @@ REQUIRED = (
     "src/server/services/StreetDetailService.luau",
     "src/server/services/SprintService.luau",
     "src/server/dev/WorldTraversalTests.luau",
+    "src/server/dev/TrafficSafetyTests.luau",
     "src/server/dev/CityTraversalTests.luau",
     "src/server/services/WeatherService.luau",
     "src/server/services/TrafficService.luau",
@@ -360,6 +361,19 @@ def main() -> None:
             raise SystemExit("P0: world surface audit missing " + invariant)
     if bootstrap.index("WorldSurfaceAudit.Validate()") > bootstrap.index("StartupContract.Validate()"):
         raise SystemExit("P0: road collision audit must run before ready contract")
+
+    # Ensure repaired traffic never repeatedly spawns onto active players/vehicles.
+    traffic_safety = (ROOT / "src/server/dev/TrafficSafetyTests.luau").read_text(encoding="utf-8")
+    traffic_source = (ROOT / "src/server/services/TrafficService.luau").read_text(encoding="utf-8")
+    if 'WaitForChild("TrafficSafetyTests")).Run()' not in bootstrap:
+        raise SystemExit("P0: NPC traffic and seam checks not in Studio startup")
+    for condition in ("agent.respawnAt = os.clock() + 8",
+                      "rootPart.Position - midpoint", "model.PrimaryPart.Position - midpoint",
+                      "npc.PrimaryPart.Position - position"):
+        if condition not in traffic_source:
+            raise SystemExit("P0: traffic safety regression: " + condition)
+    if "Enum.Material.Asphalt" not in traffic_safety or "npc.PrimaryPart" not in traffic_safety:
+        raise SystemExit("P0: traffic road probes or NPC checks removed")
 
     workflows = ROOT / ".github" / "workflows"
     if workflows.exists() and any(workflows.iterdir()):
