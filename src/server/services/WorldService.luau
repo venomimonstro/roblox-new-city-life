@@ -85,7 +85,15 @@ function WorldService.Start()
     -- ocean visually covered the z=600/800 routes.
     -- Coastal and hillside silhouettes: decorative placeholders, not final districts.
     part(root, "Beach", Vector3.new(1800, 0.6, 155), Vector3.new(0, -0.45, 1915), Color3.fromRGB(216, 195, 139), Enum.Material.Sand)
-    part(root, "Ocean", Vector3.new(2000, 0.2, 340), Vector3.new(0, -0.65, 2120), Color3.fromRGB(42, 134, 180), Enum.Material.Glass, false)
+    -- Terrain water rather than a fake glass ocean over ordinary grass:
+    -- entering it becomes swimming instead of running under a painted sea.
+    terrain:FillBlock(CFrame.new(0, -5.5, 2124),
+        Vector3.new(2000, 12, 360), Enum.Material.Water)
+    local sea = part(root, "Ocean", Vector3.new(2000, 0.2, 340),
+        Vector3.new(0, -0.65, 2120), Color3.fromRGB(42, 134, 180),
+        Enum.Material.Glass, false)
+    sea.Transparency = 0.65
+    sea.CanTouch = false
     for i = 1, 6 do
         local hill = part(root, "Hill_" .. i, Vector3.new(85, rng:NextInteger(25, 95), 90),
             Vector3.new(-1700 + (i - 1) * 130, 9, -2040),
@@ -93,6 +101,31 @@ function WorldService.Start()
         hill.Shape = Enum.PartType.Ball
         hill.CanCollide = false
         hill.CanQuery = false -- terrain scenery must never close a driving lane
+    end
+
+    -- Solid far-edge guard rails are well outside the street grid and
+    -- inside the continuous terrain. They prevent walking or driving off
+    -- the last terrain chunk and are excluded from wheel ground raycasts.
+    local limits = Instance.new("Folder")
+    limits.Name = "WorldLimits"
+    limits.Parent = root
+    for _, boundary in {
+        {name = "North", size = Vector3.new(4560, 150, 16),
+            position = Vector3.new(0, 55, -2265)},
+        {name = "South", size = Vector3.new(4560, 150, 16),
+            position = Vector3.new(0, 55, 2265)},
+        {name = "West", size = Vector3.new(16, 150, 4560),
+            position = Vector3.new(-2265, 55, 0)},
+        {name = "East", size = Vector3.new(16, 150, 4560),
+            position = Vector3.new(2265, 55, 0)},
+    } do
+        local wall = part(limits, boundary.name, boundary.size,
+            boundary.position, Color3.fromRGB(94, 110, 103),
+            Enum.Material.SmoothPlastic, true)
+        wall.Transparency = 1
+        wall.CastShadow = false
+        wall.CanQuery = false
+        wall.CanTouch = false
     end
 
     local spawn = Instance.new("SpawnLocation")
