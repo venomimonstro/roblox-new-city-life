@@ -88,7 +88,13 @@ function Jobs.Start()
             "Start shift", Color3.fromRGB(45, 178, 173), function(player)
                 local id = player.UserId
                 if active[id] then
-                    message(player, "Finish your existing job first")
+                    if active[id].id == def.id and not active[id].settling then
+                        ShiftRegistry.Release(id, "legacy_" .. def.id)
+                        active[id] = nil
+                        message(player, "Shift cancelled. You can choose another profession.")
+                    else
+                        message(player, "Finish the active job before switching professions")
+                    end
                     return
                 end
                 if os.clock() < (cooldown[id] or 0) then return end
@@ -227,7 +233,7 @@ function Jobs.Start()
                     shift.drivenDistance = 0
                     shift.began = os.clock()
                     shift.origin = pos
-                elseif delta > 0 and validMode then
+                elseif delta > 0 and delta < 55 and validMode then
                     shift.moved += delta
                     if shift.id == "taxi" then
                         shift.drivenDistance = (shift.drivenDistance or 0) + delta
