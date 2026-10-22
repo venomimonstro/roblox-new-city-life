@@ -104,8 +104,35 @@ local function buildPlot(root: Instance, slot: number)
     local shade = if slot % 3 == 0 then Color3.fromRGB(174, 159, 140)
         elseif slot % 3 == 1 then Color3.fromRGB(133, 157, 170)
         else Color3.fromRGB(174, 161, 179)
-    part(estate, "House", Vector3.new(13, 12, 16),
-        plot.house + Vector3.new(0, 5, 0), shade, true)
+    -- Preserve the canonical House anchor for property and safe services,
+    -- but replace its solid cube with an accessible four-wall structure.
+    local anchor = part(estate, "House", Vector3.new(13, 12, 16),
+        plot.house + Vector3.new(0, 5, 0), shade, false)
+    anchor.Transparency = 1
+    anchor.CanQuery = false
+    local facing = if slot < 24 then 1 else -1
+    local wallMaterial = if slot % 3 == 0 then Enum.Material.Brick
+        else Enum.Material.Plaster
+    local floor = part(estate, "HouseFloor", Vector3.new(13.6, 0.3, 16.6),
+        plot.house + Vector3.new(0, -0.78, 0),
+        Color3.fromRGB(177, 156, 132), true)
+    floor.Material = Enum.Material.WoodPlanks
+    for _, side in {-1, 1} do
+        local sideWall = part(estate, "HouseSideWall", Vector3.new(0.55, 11.5, 16.3),
+            plot.house + Vector3.new(side * 6.5, 4.8, 0), shade, true)
+        sideWall.Material = wallMaterial
+        local frontWing = part(estate, "HouseFrontWing", Vector3.new(5.05, 11.5, 0.6),
+            plot.house + Vector3.new(side * 4.0, 4.8, facing * 8.12),
+            shade, true)
+        frontWing.Material = wallMaterial
+    end
+    local rearWall = part(estate, "HouseBackWall", Vector3.new(13.4, 11.5, 0.6),
+        plot.house + Vector3.new(0, 4.8, -facing * 8.12), shade, true)
+    rearWall.Material = wallMaterial
+    part(estate, "HouseDoorLintel", Vector3.new(2.95, 4.3, 0.62),
+        plot.house + Vector3.new(0, 8.4, facing * 8.12), shade, true)
+    -- Door trim is non-colliding. An actual walking passage now exists.
+
     part(estate, "Porch", Vector3.new(8, 0.5, 9),
         plot.house + Vector3.new(0, 0, if slot < 24 then 12 else -12),
         Color3.fromRGB(138, 125, 106), true)
