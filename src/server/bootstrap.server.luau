@@ -7,6 +7,7 @@ local StreetDetailService = require(Services:WaitForChild("StreetDetailService")
 local SprintService = require(Services:WaitForChild("SprintService"))
 local VehicleService = require(Services:WaitForChild("VehicleService"))
 local TransportPhysicsService = require(Services:WaitForChild("TransportPhysicsService"))
+local CharacterPhysicsService = require(Services:WaitForChild("CharacterPhysicsService"))
 local DistrictService = require(Services:WaitForChild("DistrictService"))
 local GarageService = require(Services:WaitForChild("GarageService"))
 local ProfileService = require(Services:WaitForChild("ProfileService"))
@@ -51,6 +52,7 @@ local success, err = pcall(function()
     WorldService.Start()
     StreetDetailService.Start() -- Continuous pedestrian paths, street markings and lamps
     SprintService.Start() -- Server-controlled sprint on desktop, mobile and gamepad
+    CharacterPhysicsService.Start() -- Humanoid fall impact and safe landing response
     WeatherService.Start()
     DistrictService.Start()
     DistrictDetailService.Start()
