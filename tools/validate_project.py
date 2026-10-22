@@ -474,6 +474,27 @@ def main() -> None:
     if "seat.Occupant ~= humanoid" not in transport_source:
         raise SystemExit("Transport controls can be spoofed by remote clients")
 
+    # P0 user-journey regression: salaries cannot be paid for foot microteleports,
+    # missing owned-car driving, or an active job in another career system.
+    career_rules = (ROOT / "src/shared/CareerRules.luau").read_text(encoding="utf-8")
+    career_run = (ROOT / "src/server/services/LegalCareerService.luau").read_text(encoding="utf-8")
+    legacy_run = (ROOT / "src/server/services/CityJobsService.luau").read_text(encoding="utf-8")
+    economy = (ROOT / "src/shared/LifeEconomy.luau").read_text(encoding="utf-8")
+    for marker in ("MaximumMovementForSample", "CanDeliverAfterParking",
+                   "CanFinishLeg"):
+        if marker not in career_rules or marker not in career_run:
+            raise SystemExit("P0: mission completion bypasses server route checks: " + marker)
+    if "lastDrivenPosition = nil" not in career_run or "lastSampleAt = now" not in career_run:
+        raise SystemExit("P0: driving and travel checks survive unrelated legs")
+    if "MaximumMovementForSample" not in legacy_run or "ShiftRegistry.Claim" not in legacy_run:
+        raise SystemExit("P0: legacy jobs can be farmed via microteleports or double shifts")
+    if "profile.deathCount = math.min(100000000" not in economy:
+        raise SystemExit("P0: medical respawn breaks after bounded account counters fill")
+    if 'WaitForChild("LegalCareerTests")).Run()' not in bootstrap:
+        raise SystemExit("P0: Studio career simulations disconnected")
+    if 'WaitForChild("LifeEconomyTests")).Run()' not in bootstrap:
+        raise SystemExit("P0: Studio debt and free resurrection tests disconnected")
+
     workflows = ROOT / ".github" / "workflows"
     if workflows.exists() and any(workflows.iterdir()):
         raise SystemExit("GitHub Actions workflows are explicitly disabled")
