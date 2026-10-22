@@ -167,12 +167,21 @@ local function advance(player: Player, job: any, now: number, pos: Vector3)
     -- A teleport is not legitimate work movement; require a fresh walk/drive
     -- after the jump and never count the jump itself toward the mission.
     if change > CareerRules.MaximumMovementForSample(sampleElapsed, mode) then
+        -- Teleports and large replication corrections invalidate this leg.
+        -- A player must restart from the assignment's verified checkpoint,
+        -- not from a teleported location next to the destination.
         job.moved = 0
         job.lastDrivenPosition = nil
         job.lastDrivenAt = -100
         job.began = now
-        job.origin = pos
-        send(player, job, "Large position jump detected; travel route reset")
+        job.origin = if job.stage == 1 then job.definition.start
+            else job.definition.stops[job.stage - 1]
+        job.status = "invalidated"
+        send(player, nil,
+            "Unverified position jump: shift cancelled. Return to start to accept a new assignment.")
+        ShiftRegistry.Release(player.UserId, "career_" .. job.definition.id)
+        running[player.UserId] = nil
+        cooldown[player.UserId] = now + 8
         return
     end
     -- 0.35s tick at <=150stud/s; jump/teleport spikes do not count.
