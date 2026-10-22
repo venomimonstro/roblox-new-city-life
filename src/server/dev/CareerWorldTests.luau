@@ -31,14 +31,29 @@ local function checkPoint(position: Vector3, label: string, drivable: boolean)
     end
 end
 
+-- Verify the full street between waypoints, not just the end of a commute.
+local function checkLeg(from: Vector3, to: Vector3, label: string)
+    local dx, dz = math.abs(from.X - to.X), math.abs(from.Z - to.Z)
+    assert(dx < 0.01 or dz < 0.01,
+        "[Career World] Waypoints cut through blocks instead of roads: " .. label)
+    local steps = math.max(1, math.ceil((to - from).Magnitude / 25))
+    for i = 0, steps do
+        checkPoint(from:Lerp(to, i / steps),
+            label .. " corridor sample " .. tostring(i), true)
+    end
+end
+
 function Tests.Run()
     local count = 0
     for _, job in Catalog do
         checkPoint(job.start, job.id .. " starting shift", false)
         count += 1
+        local previous = job.start
         for index, stop in job.stops do
             checkPoint(stop, job.id .. " stop " .. tostring(index),
                 job.mode == "vehicle")
+            checkLeg(previous, stop, job.id .. " leg " .. tostring(index))
+            previous = stop
             count += 1
         end
     end
