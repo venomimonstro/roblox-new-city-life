@@ -265,10 +265,12 @@ function Jobs.Start()
                     validMode = humanoid ~= nil and humanoid.SeatPart == nil
                 end
                 if delta > CareerRules.MaximumMovementForSample(elapsed, mode) then
-                    shift.moved = 0
-                    shift.drivenDistance = 0
-                    shift.began = now
-                    shift.origin = pos
+                    -- Teleporting must not move the mission origin to its goal.
+                    active[id] = nil
+                    ShiftRegistry.Release(id, "legacy_" .. shift.id)
+                    route(player, nil)
+                    cooldown[id] = now + 8
+                    message(player, "Unverified position jump. Restart this shift.")
                 elseif delta > 0 and validMode then
                     shift.moved += delta
                     if shift.id == "taxi" then
