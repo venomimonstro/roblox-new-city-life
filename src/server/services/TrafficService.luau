@@ -4,6 +4,7 @@
 local RunService = game:GetService("RunService")
 local VehicleService = require(script.Parent:WaitForChild("VehicleService"))
 local Wanted = require(script.Parent:WaitForChild("WantedService"))
+local Signals = require(script.Parent:WaitForChild("TrafficSignalService"))
 local Traffic = {}
 local agents: {any} = {}
 local CATALOG = {
@@ -123,6 +124,29 @@ local function updateAgent(agent: any)
     local flat = Vector3.new(forward.X, 0, forward.Z)
     if flat.Magnitude < 0.01 then return "driving" end
     flat = flat.Unit
+    if not agent.police and Signals.ShouldStop(position, flat) then
+        VehicleService.SetTrafficControls(car, -0.1, 0)
+        return "driving"
+    end
+    -- Stop behind real traffic instead of continuously accelerating through
+    -- cars queued at a red light. Per-agent spatial query at ~5 Hz.
+    if not agent.police then
+        local search = OverlapParams.new()
+        search.FilterType = Enum.RaycastFilterType.Exclude
+        search.FilterDescendantsInstances = {car.Model}
+        search.MaxParts = 30
+        local ahead = workspace:GetPartBoundsInBox(
+            car.Chassis.CFrame * CFrame.new(0, 0, -13),
+            Vector3.new(7.5, 5, 18), search)
+        for _, part in ahead do
+            local model = part:FindFirstAncestorOfClass("Model")
+            if model and model ~= car.Model
+                and model:GetAttribute("StreetCityVehicle") == true then
+                VehicleService.SetTrafficControls(car, -0.05, 0)
+                return "driving"
+            end
+        end
+    end
     local cross = flat:Cross(aim).Y
     local dot = math.clamp(flat:Dot(aim), -1, 1)
     local steer = math.clamp(-cross * 2.2, -1, 1)
