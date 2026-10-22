@@ -103,15 +103,19 @@ local function newVehicle(typeId: string, position: Vector3, heading: number): a
     -- Artificial body mass distributed inside the rigid assembly.
     local ballast = Instance.new("Part")
     ballast.Name = "MassBallast"
-    ballast.Size = Vector3.new(1, 1, 1)
+    ballast.Size = if spec.kind == "cycle" then Vector3.new(1, 1, 2)
+        elseif spec.kind == "road" then Vector3.new(4, 2, 6)
+        elseif spec.kind == "water" then Vector3.new(3, 2, 6)
+        else Vector3.new(3, 2, 7)
     ballast.Transparency = 1
     ballast.CanCollide = false
     ballast.CanTouch = false
     ballast.CanQuery = false
     ballast.Anchored = false
     ballast.Massless = false
+    local volume = ballast.Size.X * ballast.Size.Y * ballast.Size.Z
     ballast.CustomPhysicalProperties = PhysicalProperties.new(
-        math.clamp(spec.mass / 20, 0.7, 100), 0.7, 0.05, 100, 100)
+        math.clamp(spec.mass / volume, 0.7, 100), 0.7, 0.05, 100, 100)
     ballast.CFrame = root.CFrame
     ballast.Parent = model
     local weld = Instance.new("WeldConstraint")
