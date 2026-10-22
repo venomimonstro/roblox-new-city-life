@@ -85,8 +85,7 @@ local function pad(parent: Instance, name: string, position: Vector3,
     return p
 end
 
-local function credit(player: Player, amount: number): boolean
-    local operation = "job_" .. HttpService:GenerateGUID(false):gsub("-", "")
+local function credit(player: Player, amount: number, operation: string): boolean
     return ProfileService.Mutate(player, function(profile)
         return Rules.AwardCredits(profile, amount, operation)
     end)
@@ -122,7 +121,8 @@ function Jobs.Start()
                 end
                 active[id] = {id = def.id, began = os.clock(), startedAt = os.clock(),
                     origin = rootPart.Position, lastPosition = rootPart.Position,
-                    lastSampleAt = os.clock(), moved = 0, settling = false}
+                    lastSampleAt = os.clock(), moved = 0, settling = false,
+                    operation = "job_" .. HttpService:GenerateGUID(false):gsub("-", "")}
                 route(player, def)
                 message(player, def.title .. " started. Travel to the marked workplace.")
             end)
@@ -153,7 +153,7 @@ function Jobs.Start()
                     return
                 end
                 shift.settling = true
-                local paid = credit(player, def.reward)
+                local paid = credit(player, def.reward, shift.operation)
                 if active[id] ~= shift then return end
                 if paid then
                     active[id] = nil
