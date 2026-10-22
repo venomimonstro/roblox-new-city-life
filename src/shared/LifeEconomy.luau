@@ -86,13 +86,24 @@ function Economy.InvestSafety(profile: any, districtId: string,
 end
 
 function Economy.SecurityDividend(profile: any, districtId: string,
-    operationId: string): boolean
+    operationId: string, paidAt: number?): boolean
+    if not districtIds[districtId] then return false end
     local shares = type(profile.securityBonds) == "table"
         and profile.securityBonds[districtId] or 0
     if type(shares) ~= "number" or shares < 1 or shares > 3
         or profile.bankCredits + shares * 30 > MAX_MONEY then return false end
+    if paidAt ~= nil then
+        if type(paidAt) ~= "number" or paidAt % 1 ~= 0
+            or paidAt < 1000000000 or paidAt > 5000000000
+            or type(profile.securityDividendAt) ~= "table" then return false end
+        local previous = profile.securityDividendAt[districtId]
+        if previous and paidAt - previous < 600 then return false end
+    end
     if not op(profile, operationId) then return false end
     profile.bankCredits += shares * 30
+    if paidAt then
+        profile.securityDividendAt[districtId] = paidAt
+    end
     return true
 end
 
