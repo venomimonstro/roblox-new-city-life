@@ -36,6 +36,11 @@ function Contract.Validate()
     requireChild(world, "PlayerSpawn", "SpawnLocation")
     local districtShells = requireChild(world, "DistrictBlockouts", "Folder")
     requireChild(world, "DistrictDetails", "Folder")
+    local infill = requireChild(world, "CityInfill", "Folder")
+    local addedCount = infill:GetAttribute("GeneratedBuildings")
+    assert(type(addedCount) == "number" and addedCount >= 70
+        and addedCount <= 140,
+        "[StreetCity Gate] Procedural city infill missing or exceeds geometry budget")
     local decoratedCount = 0
     for _, zone in districtShells:GetChildren() do
         for _, building in zone:GetChildren() do
