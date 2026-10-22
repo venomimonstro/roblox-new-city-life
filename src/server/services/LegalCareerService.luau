@@ -154,11 +154,8 @@ local function advance(player: Player, job: any, now: number, pos: Vector3)
     -- car and their last server-observed car position was near the destination.
     local parkedAtStop = false
     if mode == "vehicle" and isOnFoot and job.lastDrivenPosition then
-        parkedAtStop = now - (job.lastDrivenAt or -100) <= 20
-            and (Vector3.new(job.lastDrivenPosition.X, 0, job.lastDrivenPosition.Z)
-                - Vector3.new(target.X, 0, target.Z)).Magnitude <= 25
-            and (Vector3.new(pos.X, 0, pos.Z)
-                - Vector3.new(target.X, 0, target.Z)).Magnitude <= 16
+        parkedAtStop = CareerRules.CanDeliverAfterParking(
+            target, job.lastDrivenPosition, job.lastDrivenAt or -100, now, pos)
     end
     local isValidTransport = if mode == "vehicle"
         then validVehicle or parkedAtStop else isOnFoot
