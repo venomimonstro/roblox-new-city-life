@@ -123,12 +123,18 @@ function Economy.BountyReward(profile: any, stars: number,
         local oldestKey: string? = nil
         local oldestTime = math.huge
         for key, timestamp in pairs(profile.bountyClaims) do
-            count += 1
-            if timestamp < oldestTime then
-                oldestKey, oldestTime = key, timestamp
+            -- Expired claims are safe to forget; unexpired victim claims must
+            -- survive ordinary purchases and a full 48-player server.
+            if timestamp <= paidAt - 1800 then
+                profile.bountyClaims[key] = nil
+            else
+                count += 1
+                if timestamp < oldestTime then
+                    oldestKey, oldestTime = key, timestamp
+                end
             end
         end
-        if count > 20 and oldestKey then
+        if count > 128 and oldestKey then
             profile.bountyClaims[oldestKey] = nil
         end
     end
