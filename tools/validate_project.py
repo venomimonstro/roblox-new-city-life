@@ -375,6 +375,15 @@ def main() -> None:
     if "Enum.Material.Asphalt" not in traffic_safety or "npc.PrimaryPart" not in traffic_safety:
         raise SystemExit("P0: traffic road probes or NPC checks removed")
 
+    # Gameplay end-to-end anti-exploit regressions found by avatar journey audit.
+    armory = (ROOT / "src/server/services/ArmoryService.luau").read_text(encoding="utf-8")
+    old_jobs = (ROOT / "src/server/services/CityJobsService.luau").read_text(encoding="utf-8")
+    if "targetHumanoid.Health <= damage" not in armory:
+        raise SystemExit("P0: bounty can be paid by a fall after a non-lethal attack")
+    if "(shift.drivenDistance or 0)" not in old_jobs or "shift.drivenDistance = 0" not in old_jobs:
+        raise SystemExit("P0: taxi can be completed on foot or by teleporting")
+    if "ShiftRegistry.Release" not in old_jobs:
+        raise SystemExit("P0: paid jobs may block subsequent shifts forever")
     workflows = ROOT / ".github" / "workflows"
     if workflows.exists() and any(workflows.iterdir()):
         raise SystemExit("GitHub Actions workflows are explicitly disabled")
