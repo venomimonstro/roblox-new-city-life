@@ -3,6 +3,8 @@ local RunService = game:GetService("RunService")
 
 local Services = script.Parent:WaitForChild("services")
 local WorldService = require(Services:WaitForChild("WorldService"))
+local StreetDetailService = require(Services:WaitForChild("StreetDetailService"))
+local SprintService = require(Services:WaitForChild("SprintService"))
 local VehicleService = require(Services:WaitForChild("VehicleService"))
 local DistrictService = require(Services:WaitForChild("DistrictService"))
 local GarageService = require(Services:WaitForChild("GarageService"))
@@ -41,6 +43,8 @@ local success, err = pcall(function()
     DistrictSocietyService.Start() -- incidents affect local population, safety and property index
     ReputationService.Start()
     WorldService.Start()
+    StreetDetailService.Start() -- Continuous pedestrian paths, street markings and lamps
+    SprintService.Start() -- Server-controlled sprint on desktop, mobile and gamepad
     WeatherService.Start()
     DistrictService.Start()
     DistrictDetailService.Start()
