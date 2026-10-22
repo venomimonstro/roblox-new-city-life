@@ -34,7 +34,19 @@ function Contract.Validate()
         and #crossings:GetChildren() >= 90 and #lighting:GetChildren() >= 20,
         "[StreetCity Gate] Streets missing sidewalks, markings, crossings or lights")
     requireChild(world, "PlayerSpawn", "SpawnLocation")
-    requireChild(world, "DistrictBlockouts", "Folder")
+    local districtShells = requireChild(world, "DistrictBlockouts", "Folder")
+    requireChild(world, "DistrictDetails", "Folder")
+    local decoratedCount = 0
+    for _, zone in districtShells:GetChildren() do
+        for _, building in zone:GetChildren() do
+            if building:IsA("BasePart") and building.Name:match("^Building_") then
+                requireChild(zone, "Facade_" .. building.Name, "Model")
+                decoratedCount += 1
+            end
+        end
+    end
+    assert(decoratedCount >= 55,
+        "[StreetCity Gate] City reverted to empty geometric blocks without façades")
     local residential = requireChild(world, "ResidentialHomes", "Folder")
     assert(#residential:GetChildren() == 48,
         "[StreetCity Gate] Exactly 48 physical home and garage plots expected")
