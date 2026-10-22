@@ -3,6 +3,7 @@
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Schema = require(Shared:WaitForChild("ProfileSchema"))
 local Life = require(Shared:WaitForChild("LifeEconomy"))
+local Wallet = require(Shared:WaitForChild("GarageTransactions"))
 local Tests = {}
 
 function Tests.Run()
@@ -80,6 +81,31 @@ function Tests.Run()
     assert(not Life.BountyReward(p, 2, "bounty_low_0001"),
         "Low-star opponents cannot pay police bounty")
 
+    -- Two different operation IDs must not pay twice for the same opponent
+    -- even if enough normal transactions roll the 40-entry journal over.
+    local hunter = Schema.New(10004)
+    local victimId = 482910
+    local now = 1800000000
+    assert(Life.BountyReward(hunter, 4, "bounty_durable_001", victimId, now),
+        "First server-authorized bounty should pay")
+    local paidBalance = hunter.bankCredits
+    for n = 1, 42 do
+        assert(Wallet.AwardCredits(hunter, 1, "other_purchase_" .. tostring(1000 + n)),
+            "Regular earning must remain available after claiming bounty")
+    end
+    assert(not Life.BountyReward(hunter, 4, "bounty_durable_002",
+        victimId, now + 1799), "Cannot farm identical victim after journal rollover")
+    assert(hunter.bankCredits == paidBalance,
+        "Declined duplicate bounty must not change bank credit balance")
+    assert(Life.BountyReward(hunter, 4, "bounty_durable_003",
+        victimId, now + 1800), "Bounty allowed after a full cooldown")
+    assert(Schema.Decode(hunter) ~= nil,
+        "Long-lived bounty claim ledger must remain schema valid")
+    local legacyWithNoLedger = Schema.New(10005)
+    legacyWithNoLedger.bountyClaims = nil
+    local upgradedLedger = Schema.Decode(legacyWithNoLedger)
+    assert(upgradedLedger and next(upgradedLedger.bountyClaims) == nil,
+        "Existing V4 saved profiles must migrate without losing credits")
     local migrated = Schema.New(10003)
     migrated.homeCredits = nil
     migrated.medicalDebt = nil
