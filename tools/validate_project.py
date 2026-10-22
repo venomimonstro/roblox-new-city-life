@@ -43,6 +43,9 @@ REQUIRED = (
     "src/server/services/NatureService.luau",
     "src/server/services/HousingService.luau",
     "src/server/services/CityArchitecture.luau",
+    "src/server/services/CityInfillService.luau",
+    "src/server/dev/CityInfillTests.luau",
+    "src/client/MapHUD.client.luau",
     "src/server/services/StreetDetailService.luau",
     "src/server/services/SprintService.luau",
     "src/server/dev/WorldTraversalTests.luau",
@@ -392,6 +395,31 @@ def main() -> None:
         raise SystemExit("P0: legacy job tracks implausible movement spikes")
     if 'local isOnFoot = humanoid ~= nil and humanoid.SeatPart == nil' not in career_source:
         raise SystemExit("P0: pedestrian transport classification missing")
+
+    # Procedural neighborhoods and streaming-safe navigation.
+    infill = (ROOT / "src/server/services/CityInfillService.luau").read_text(encoding="utf-8")
+    infill_test = (ROOT / "src/server/dev/CityInfillTests.luau").read_text(encoding="utf-8")
+    minimap = (ROOT / "src/client/MapHUD.client.luau").read_text(encoding="utf-8")
+    if "CityInfillService.Start()" not in bootstrap:
+        raise SystemExit("P0: procedural city infill service not started")
+    if 'WaitForChild("CityInfillTests")).Run()' not in bootstrap:
+        raise SystemExit("P0: Studio city infill collision acceptance not connected")
+    if '"CityInfill"' not in infill or "GetPartBoundsInBox" not in infill:
+        raise SystemExit("P0: generator lacks reserved-lot occupancy collision checks")
+    if "Enum.ModelLevelOfDetail.SLIM" not in infill:
+        raise SystemExit("P1: distant generated city geometry not optimized for streaming")
+    for invariant in ("single physics hull", "driving lane",
+                      "additional buildings", "live road"):
+        if invariant not in infill_test:
+            raise SystemExit("P0: procedural city Studio acceptance missing " + invariant)
+    if '"StreetCityMapAndQuality"' not in minimap or "StreetCityHomePosition" not in minimap:
+        raise SystemExit("P1: local minimap and home navigation not connected")
+    if "StreetCityVisualQuality" not in minimap or "StreetCityVisualQuality" not in hud:
+        raise SystemExit("P1: per-device rain/lighting quality mode broken")
+    if "RequestStreamAroundAsync" not in housing:
+        raise SystemExit("P0: personal home spawn must prefetch streaming terrain")
+    if '"CityInfill"' not in (ROOT / "src/server/services/StartupContract.luau").read_text(encoding="utf-8"):
+        raise SystemExit("P0: startup contract does not verify the populated new city")
 
     workflows = ROOT / ".github" / "workflows"
     if workflows.exists() and any(workflows.iterdir()):
