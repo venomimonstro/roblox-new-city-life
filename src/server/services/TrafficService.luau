@@ -12,15 +12,6 @@ local CATALOG = {
     "starter_american_muscle", "street_coupe", "sport_sedan",
 }
 
-local function route(distance: number): {Vector3}
-    return {
-        Vector3.new(distance, 3.5, distance),
-        Vector3.new(distance, 3.5, -distance),
-        Vector3.new(-distance, 3.5, -distance),
-        Vector3.new(-distance, 3.5, distance),
-    }
-end
-
 local function mannequin(car: any, police: boolean)
     local parts = {}
     for index, offset in {
@@ -156,18 +147,36 @@ local function updateAgent(agent: any)
 end
 
 function Traffic.Start()
-    local inner = route(100)
-    local outer = route(200)
-    for i = 1, 4 do
-        local a = createAgent(inner, i, CATALOG[i], false)
-        if a then table.insert(agents, a) end
-        local b = createAgent(outer, i, CATALOG[(i % #CATALOG) + 1], false)
-        if b then table.insert(agents, b) end
-    end
-    for i = 1, 2 do
-        local p = createAgent(if i == 1 then inner else outer, i,
-            "sport_sedan", true)
-        if p then table.insert(agents, p) end
+    -- Distribute traffic across the CITY, not just the four downtown
+    -- intersections. Routes follow the 100-stud continuous road grid.
+    -- Each route has its own 200x200 block and unique startup position.
+    local neighborhoods = {
+        Vector3.new(0, 0, 0),
+        Vector3.new(800, 0, -300),
+        Vector3.new(-800, 0, 0),
+        Vector3.new(-800, 0, 800),
+        Vector3.new(1000, 0, 1000),
+        Vector3.new(500, 0, -1300),
+        Vector3.new(0, 0, 1100),
+    }
+    for regionIndex, center in neighborhoods do
+        local roads = {
+            Vector3.new(center.X - 100, 3.5, center.Z - 100),
+            Vector3.new(center.X - 100, 3.5, center.Z + 100),
+            Vector3.new(center.X + 100, 3.5, center.Z + 100),
+            Vector3.new(center.X + 100, 3.5, center.Z - 100),
+        }
+        local first = createAgent(roads, 1,
+            CATALOG[(regionIndex - 1) % #CATALOG + 1], false)
+        if first then table.insert(agents, first) end
+        local second = createAgent(roads, 3,
+            CATALOG[regionIndex % #CATALOG + 1], false)
+        if second then table.insert(agents, second) end
+        -- Police patrols also work outside downtown.
+        if regionIndex == 1 or regionIndex == 4 or regionIndex == 6 then
+            local police = createAgent(roads, 2, "sport_sedan", true)
+            if police then table.insert(agents, police) end
+        end
     end
     local accum = 0
     RunService.Heartbeat:Connect(function(dt)
