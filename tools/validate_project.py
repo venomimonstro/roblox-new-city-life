@@ -384,6 +384,15 @@ def main() -> None:
         raise SystemExit("P0: taxi can be completed on foot or by teleporting")
     if "ShiftRegistry.Release" not in old_jobs:
         raise SystemExit("P0: paid jobs may block subsequent shifts forever")
+    if 'route(player, def)' not in legacy_jobs or 'route(player, nil)' not in legacy_jobs:
+        raise SystemExit("P1: original city jobs have no shared HUD navigation or cleanup")
+    if 'ShiftRegistry.Release(id, "legacy_" .. def.id)' not in legacy_jobs:
+        raise SystemExit("P0: old job cancellation fails to release shared shift")
+    if 'delta > 0 and delta < 55 and validMode' not in legacy_jobs:
+        raise SystemExit("P0: legacy job tracks implausible movement spikes")
+    if 'local isOnFoot = humanoid ~= nil and humanoid.SeatPart == nil' not in career_source:
+        raise SystemExit("P0: pedestrian transport classification missing")
+
     workflows = ROOT / ".github" / "workflows"
     if workflows.exists() and any(workflows.iterdir()):
         raise SystemExit("GitHub Actions workflows are explicitly disabled")
