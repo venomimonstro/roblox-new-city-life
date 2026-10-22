@@ -68,6 +68,9 @@ function Architecture.DecorateBuilding(parent: Instance, core: Part, districtId:
     facade.Name = "Facade_" .. core.Name
     facade:SetAttribute("District", districtId)
     facade:SetAttribute("DecorativeOnly", true)
+    -- Keep distant windows/roof details as a small SLIM representation, not
+    -- hundreds of full-resolution façade parts on low-memory clients.
+    facade.LevelOfDetail = Enum.ModelLevelOfDetail.SLIM
     facade.Parent = parent
     local floorCount = math.min(10, math.floor((core.Size.Y - 3) / 7.5))
     -- The core is a solid cheap collision volume; the visual facade is separate.
