@@ -39,3 +39,26 @@ These are **source consistency checks**, not proof of Lua parsing, physical game
 6. Production-grade persistent property title, crew influence and consistent cross-server district state, plus moderation and retention; this is not solved by local session state alone.
 
 **Do not call this a fully final Roblox game yet.** Source defects are being fixed and source acceptance expanded, but release readiness requires empirical runtime evidence.
+
+
+## Additional release-blocking corrections — transport, parser and bounded startup
+
+This additional audit pass found actual defects in production and Studio QA, not just incomplete feature lists.
+
+- **Economy / transport P0:** public transit debited tickets before confirming a usable destination floor. Paid rides now require a walkable preflight; both underground and street transfers perform raycasts and avatar-volume obstruction checks. If a paid ride cannot complete while the player is online and loaded, a distinct refund operation with stable identifier can return the fare. A successfully arrived player is never refunded because of a later UI notification error.
+- **World / collision P0:** a landing ray must ignore car roofs as floor while also rejecting traffic vehicles as obstacles. Metro entrance and exit now use the same grounded, clearance-checked landing path. Studio acceptance checks each metro and bus destination and injects a deliberate blocking pillar.
+- **QA / compilation P0:** `TransitAndNpcTests.luau` previously had a missing comma in an `assert` statement for NPC identity. Corrected. Added a static regex guard in `tools/validate_project.py` for this recurring class of Luau error.
+- **Boot / operations P0:** each of the 41 server service imports now goes through a 10-second bounded loader. A missing ModuleScript produces a named fatal bootstrap message rather than an indefinite `WaitForChild` yield.
+- **Regression flakiness:** Studio terrain tests ignore moving vehicles **only for test instrumentation**; production landing clearance still rejects occupied positions.
+
+### Evidence actually checked
+
+- All **41 of 41 required service paths** found in GitHub `main`; source inspection only.
+- All **16 Studio acceptance-suite source files** inspected for the specific missing-comma assertion pattern. One corrected; not a full Luau compiler.
+- **14 of 14 focused static post-change checks** passed for launch wiring, fare-before-floor prevention, compensation, both metro exits, occupied landing, source lint guard and Studio fixture wiring.
+- **16 of 16 previously created Python state-machine tests** ran successfully on the older independent economy model. The model does not execute present-day Roblox/Luau source and must not be used to certify current game behavior.
+- **Not executed here:** Rojo build, Luau compiler, Roblox Studio Play, mobile client, two-server DataStore, published staging, production receipts and concurrency/profiling. They remain release blockers.
+
+### Release decision
+
+**HOLD — not final commercial release.** The game now contains stricter source safeguards, but no Roblox-engine proof that the live player journey is stable. Optional Robux currency purchases must remain disabled until durable, tested `MarketplaceService.ProcessReceipt` handling exists. Global uniqueness of properties and cross-server territory control remain unverified/incomplete. Do not interpret a static gate or checked-in sprint as production acceptance.
