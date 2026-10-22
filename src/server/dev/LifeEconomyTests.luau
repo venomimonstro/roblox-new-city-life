@@ -71,6 +71,29 @@ function Tests.Run()
     assert(p.bankCredits == bankBefore + 30)
     assert(not Life.SecurityDividend(p, "downtown", "safety_income_0001"),
         "Same safety dividend cannot be claimed twice")
+    local secured = Schema.New(10006)
+    secured.securityBonds.downtown = 2
+    local paidAt = 1800000000
+    assert(Life.SecurityDividend(secured, "downtown", "safety_claim_0001", paidAt),
+        "Confirmed investor payout must succeed")
+    local totalPaid = secured.bankCredits
+    for i = 1, 42 do
+        assert(Wallet.AwardCredits(secured, 1, "safety_earn_" .. tostring(1000 + i)),
+            "Normal wallet activity should not invalidate a safety stake")
+    end
+    assert(not Life.SecurityDividend(secured, "downtown", "safety_claim_0002",
+        paidAt + 599), "Different ID must not bypass 10-minute persistent dividend cooldown")
+    assert(secured.bankCredits == totalPaid,
+        "Rejected duplicate investor payout must not inflate secured bank money")
+    assert(Life.SecurityDividend(secured, "downtown", "safety_claim_0003",
+        paidAt + 600), "District shares become eligible after full cooldown")
+    assert(Schema.Decode(secured) ~= nil, "Investor claims must stay valid in V4 schema")
+    local historical = Schema.New(10007)
+    historical.securityDividendAt = nil
+    local migratedDividend = Schema.Decode(historical)
+    assert(migratedDividend and next(migratedDividend.securityDividendAt) == nil,
+        "Existing V4 accounts without dividend journal must migrate safely")
+
     assert(not Life.InvestSafety(p, "not_a_district", "bad_stake_0001"),
         "Server never accepts arbitrary investment target")
 
