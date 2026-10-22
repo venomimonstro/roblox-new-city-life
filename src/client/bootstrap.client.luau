@@ -285,10 +285,14 @@ local function updateWeather()
     local condition = ReplicatedStorage:GetAttribute("StreetCityWeather")
     if type(condition) ~= "string" then condition = "Clear" end
     weatherName.Text = "Weather: " .. condition
-    drops.Enabled = condition == "Rain" or condition == "Storm"
-    drops.Rate = if condition == "Storm" then 240 else 140
+    local preset = player:GetAttribute("StreetCityVisualQuality")
+    drops.Enabled = (condition == "Rain" or condition == "Storm")
+        and preset ~= "Performance"
+    drops.Rate = if preset == "Visual" then (if condition == "Storm" then 240 else 140)
+        else (if condition == "Storm" then 65 else 35)
 end
 ReplicatedStorage:GetAttributeChangedSignal("StreetCityWeather"):Connect(updateWeather)
+player:GetAttributeChangedSignal("StreetCityVisualQuality"):Connect(updateWeather)
 updateWeather()
 
 local equipmentRemote = ReplicatedStorage:WaitForChild("StreetCityEquipmentAction", 20)
@@ -342,6 +346,7 @@ task.spawn(function()
         stops: any, target: any, reward: any, _mode: any, _description: any)
         if title == nil then
             careerTarget = nil
+            player:SetAttribute("StreetCityWorkWaypoint", nil)
             careerRoute.Visible = false
             return
         end
@@ -353,6 +358,7 @@ task.spawn(function()
         careerStage, careerStops = stage, stops
         careerReward = reward
         careerTarget = target
+        player:SetAttribute("StreetCityWorkWaypoint", target)
         careerRoute.Visible = true
     end)
 end)
