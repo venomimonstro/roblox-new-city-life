@@ -98,7 +98,12 @@ local function relocate(player: Player, character: Model)
     task.wait(0.15)
     if player.Parent ~= Players or player.Character ~= character
         or human.Health <= 0 then return end
-    character:PivotTo(CFrame.new(position))
+    local homeGarage = Housing.GetGarageSpawn(player)
+    local direction = homeGarage and homeGarage.position
+    local facing = if direction then CFrame.lookAt(position,
+        Vector3.new(direction.X, position.Y, direction.Z))
+        else CFrame.new(position)
+    character:PivotTo(facing)
     root.AssemblyLinearVelocity = Vector3.zero
     root.AssemblyAngularVelocity = Vector3.zero
     local id = player.UserId
