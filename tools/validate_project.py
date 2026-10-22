@@ -118,7 +118,7 @@ def main() -> None:
         encoding="utf-8"
     )
     before_fare = transit.split("local function ride(", 1)[-1].split(
-        "local charged =", 1)[0]
+        "Wallet.SpendCredits(profile, fare, operation)", 1)[0]
     if "safeArrival(destination, character)" not in before_fare:
         raise SystemExit("Transit charges fare before checking destination ground")
     if "task.delay(waitSeconds" not in before_fare or "(currentRoot.Position - origin).Magnitude > 17" not in before_fare:
