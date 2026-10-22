@@ -21,6 +21,17 @@ function Rules.CanFinishLeg(a: Vector3, b: Vector3, position: Vector3,
     return (Vector3.new(position.X, 0, position.Z)
         - Vector3.new(b.X, 0, b.Z)).Magnitude <= 18
 end
+-- Movement budget for actual elapsed server sampling interval.
+-- Mobile players may suffer a delayed Heartbeat; the cap accommodates
+-- normal replication corrections but not 50-stud microteleports every tick.
+function Rules.MaximumMovementForSample(elapsed: number, mode: string): number
+    if type(elapsed) ~= "number" or elapsed ~= elapsed
+        or elapsed <= 0 or elapsed > 5 then return 0 end
+    if mode == "foot" then return elapsed * 28 + 7 end
+    if mode == "vehicle" then return elapsed * 125 + 12 end
+    return 0
+end
+
 -- An owned car may be parked just outside the mission circle. Do not
 -- require the driver to hold the seat while completing a delivery prompt.
 -- This is ONLY a mode allowance; the caller must also supply verified
