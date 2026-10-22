@@ -42,46 +42,90 @@ local function message(player: Player, msg: string)
     if player.Parent == Players then notice:FireClient(player, msg) end
 end
 
+-- Verify physical station arrival before collecting any fare, and verify
+-- again after a delayed departure. Never rely on an untrusted client position.
+local function safeArrival(destination: Vector3, character: Model?): Vector3?
+    local ray = RaycastParams.new()
+    ray.FilterType = Enum.RaycastFilterType.Exclude
+    local excluded = {}
+    if character then table.insert(excluded, character) end
+    local vehicles = workspace:FindFirstChild("ActiveVehicles")
+    if vehicles then table.insert(excluded, vehicles) end
+    ray.FilterDescendantsInstances = excluded
+    ray.IgnoreWater = true
+    local hit = workspace:Raycast(destination + Vector3.new(0, 7, 0),
+        Vector3.new(0, -18, 0), ray)
+    if not hit or not hit.Instance.CanCollide
+        or hit.Normal.Y < 0.78
+        or math.abs(hit.Position.Y - destination.Y) > 7 then return nil end
+    return hit.Position + Vector3.new(0, 3.5, 0)
+end
+
 local function ride(player: Player, origin: Vector3, destination: Vector3,
     fare: number, waitSeconds: number, title: string)
     if pending[player.UserId] or player.Parent ~= Players
         or not Profile.IsLoaded(player) then return end
     local human, root = rootOf(player)
     if not human or not root or (root.Position - origin).Magnitude > 14 then return end
+    local character = player.Character
+    if not safeArrival(destination, character) then
+        message(player, "Destination station is unsafe. No ticket was charged.")
+        warn("[StreetCity Transit] Station floor preflight failed: " .. tostring(destination))
+        return
+    end
     pending[player.UserId] = true
-    local op = "transit_" .. HttpService:GenerateGUID(false):gsub("-", "")
+    local operation = "transit_" .. HttpService:GenerateGUID(false):gsub("-", "")
+    local refundOperation = "refund_" .. operation
     local charged = Profile.Mutate(player, function(profile)
-        return Wallet.SpendCredits(profile, fare, op)
+        return Wallet.SpendCredits(profile, fare, operation)
     end)
     if not charged then
         pending[player.UserId] = nil
         message(player, "Fare declined or transaction uncertain; check your wallet")
         return
     end
-    local character = player.Character
+    local function refund(reason: string)
+        -- Refund is a separate idempotent transaction. Repeated callbacks use
+        -- the SAME ID; never mint multiple refunds for a single ticket.
+        local refunded = false
+        if player.Parent == Players and Profile.IsLoaded(player) then
+            refunded = Profile.Mutate(player, function(profile)
+                return Wallet.AwardCredits(profile, fare, refundOperation)
+            end)
+        end
+        if refunded then
+            message(player, reason .. " The ticket was refunded.")
+        else
+            message(player, reason .. " Refund not confirmed; check your wallet.")
+            warn("[StreetCity Transit] Ticket refund unconfirmed for " .. tostring(player.UserId)
+                .. " (" .. operation .. ")")
+        end
+    end
     message(player, title .. " ticket purchased. Departure in "
         .. tostring(waitSeconds) .. " seconds.")
     task.delay(waitSeconds, function()
-        if player.Parent ~= Players or player.Character ~= character then
-            pending[player.UserId] = nil
-            return
-        end
-        local h, r = rootOf(player)
-        if not h or not r then pending[player.UserId] = nil return end
-        -- Check the destination has walkable collision, rather than placing
-        -- a character into a mesh or under road geometry.
-        local ray = RaycastParams.new()
-        ray.FilterType = Enum.RaycastFilterType.Exclude
-        ray.FilterDescendantsInstances = {character}
-        ray.IgnoreWater = true
-        local floor = workspace:Raycast(destination + Vector3.new(0, 7, 0),
-            Vector3.new(0, -18, 0), ray)
-        if floor and floor.Instance.CanCollide and floor.Normal.Y >= 0.78 then
-            character:PivotTo(CFrame.new(floor.Position + Vector3.new(0, 3.5, 0)))
+        local ok, err = pcall(function()
+            if player.Parent ~= Players then return end
+            if player.Character ~= character then
+                refund("Departure cancelled by character respawn.")
+                return
+            end
+            local h, r = rootOf(player)
+            if not h or not r then
+                refund("Departure cancelled because the character cannot travel.")
+                return
+            end
+            local landing = safeArrival(destination, character)
+            if not landing then
+                refund("Destination station became unsafe.")
+                return
+            end
+            character:PivotTo(CFrame.new(landing))
             message(player, title .. ": arrived")
-        else
-            message(player, "Station arrival blocked by terrain. Contact support; fare was charged.")
-            warn("[StreetCity Transit] No safe arrival floor: " .. tostring(destination))
+        end)
+        if not ok then
+            warn("[StreetCity Transit] Transfer failed: " .. tostring(err))
+            refund("Transit transfer failed.")
         end
         pending[player.UserId] = nil
     end)
