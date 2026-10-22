@@ -40,7 +40,9 @@ function Economy.DeathSettlement(profile: any, wantedLevel: number,
         or type(profile.medicalDebt) ~= "number" or type(profile.deathCount) ~= "number"
         or type(wantedLevel) ~= "number" or wantedLevel % 1 ~= 0
         or wantedLevel < 0 or wantedLevel > 5 then return false end
-    if profile.deathCount >= 100000000 or profile.medicalDebt >= 1000000 then return false end
+    -- An insolvent player must never lose the free respawn path just because
+    -- unpaid medical debt or lifetime death statistics reached schema limits.
+    -- Clamp bounded counters while still settling the current loss.
     if not op(profile, operationId) then return false end
     -- Unprotected carried cash suffers a predictable robbery/accident loss.
     local pocketLoss = math.min(profile.credits,
@@ -55,7 +57,7 @@ function Economy.DeathSettlement(profile: any, wantedLevel: number,
     profile.bankCredits -= fromBank
     due -= fromBank
     profile.medicalDebt = math.min(1000000, profile.medicalDebt + due)
-    profile.deathCount += 1
+    profile.deathCount = math.min(100000000, profile.deathCount + 1)
     -- NO paid resurrection. Inability to pay yields recorded debt and
     -- an accessible public clinic, never forced Robux purchasing.
     return true
