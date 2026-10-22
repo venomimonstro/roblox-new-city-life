@@ -587,6 +587,13 @@ def main() -> None:
     if "ShiftRegistry.Claim" not in old_jobs or "ShiftRegistry.Release" not in old_jobs:
         raise SystemExit("P0: original jobs must share exclusive paid shift registry")
 
+    career_source = (ROOT / "src/server/services/LegalCareerService.luau").read_text(encoding="utf-8")
+    if career_source.count("job.origin = if job.stage == 1 then job.definition.start") < 2:
+        raise SystemExit("P0: teleport/connection loss can fake a completed work route")
+    legacy = (ROOT / "src/server/services/CityJobsService.luau").read_text(encoding="utf-8")
+    if "shift.didDrive" not in legacy or "seat.Occupant == humanoid" not in legacy:
+        raise SystemExit("P0: taxi must require owned driver history while permitting parked dropoff")
+
     workflows = ROOT / ".github" / "workflows"
     if workflows.exists() and any(workflows.iterdir()):
         raise SystemExit("GitHub Actions workflows are explicitly disabled")
