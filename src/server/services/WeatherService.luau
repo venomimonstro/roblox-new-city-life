@@ -27,6 +27,37 @@ function Weather.Start()
         correction.Name = "CityWeatherGrade"
         correction.Parent = Lighting
     end
+    -- Warm directional daylight, cooler moonlit nights and light haze supply
+    -- cinematic depth without GPU-heavy dynamic spotlights on every window.
+    Lighting.Ambient = Color3.fromRGB(61, 68, 78)
+    Lighting.OutdoorAmbient = Color3.fromRGB(116, 125, 141)
+    Lighting.ShadowSoftness = 0.35
+    Lighting.EnvironmentDiffuseScale = 0.75
+    Lighting.EnvironmentSpecularScale = 0.55
+    atmosphere.Color = Color3.fromRGB(206, 218, 231)
+    atmosphere.Decay = Color3.fromRGB(122, 145, 176)
+    atmosphere.Haze = 1.25
+    atmosphere.Glare = 0.07
+    local bloom = Lighting:FindFirstChild("StreetCityBloom")
+    if not bloom then
+        bloom = Instance.new("BloomEffect")
+        bloom.Name = "StreetCityBloom"
+        bloom.Intensity = 0.18
+        bloom.Size = 17
+        bloom.Threshold = 1.55
+        bloom.Enabled = false -- enabled only by the high graphics client preset
+        bloom.Parent = Lighting
+    end
+    local rays = Lighting:FindFirstChild("StreetCitySunRays")
+    if not rays then
+        rays = Instance.new("SunRaysEffect")
+        rays.Name = "StreetCitySunRays"
+        rays.Intensity = 0.065
+        rays.Spread = 0.62
+        rays.Enabled = false
+        rays.Parent = Lighting
+    end
+
     local clock = 7.5
     local nextWeatherAt = os.clock() + 180
     local function apply(mode: string)
