@@ -42,6 +42,10 @@ REQUIRED = (
     "src/server/services/BankNetworkService.luau",
     "src/server/services/NatureService.luau",
     "src/server/services/HousingService.luau",
+    "src/server/services/CityArchitecture.luau",
+    "src/server/services/StreetDetailService.luau",
+    "src/server/services/SprintService.luau",
+    "src/server/dev/WorldTraversalTests.luau",
     "src/server/services/WeatherService.luau",
     "src/server/services/TrafficService.luau",
     "src/server/services/LifestyleService.luau",
@@ -273,6 +277,43 @@ def main() -> None:
         raise SystemExit("P0: wanted bounty operations lack replay window")
     if "StreetCityWantedPosters" not in (ROOT / "src/client/bootstrap.client.luau").read_text(encoding="utf-8"):
         raise SystemExit("P1: wanted posters not rendered to bounty hunters")
+
+    # World, home and traversal release gates. Each is a static source
+    # invariant; only Roblox Studio can execute the geometry/raycast tests.
+    world = (ROOT / "src/server/services/WorldService.luau").read_text(encoding="utf-8")
+    housing = (ROOT / "src/server/services/HousingService.luau").read_text(encoding="utf-8")
+    detail = (ROOT / "src/server/services/StreetDetailService.luau").read_text(encoding="utf-8")
+    architecture = (ROOT / "src/server/services/CityArchitecture.luau").read_text(encoding="utf-8")
+    sprint = (ROOT / "src/server/services/SprintService.luau").read_text(encoding="utf-8")
+    district_cosmetics = (ROOT / "src/server/services/DistrictDetailService.luau").read_text(encoding="utf-8")
+    traversal = (ROOT / "src/server/dev/WorldTraversalTests.luau").read_text(encoding="utf-8")
+    for service in ("StreetDetailService", "SprintService"):
+        if service + ".Start()" not in bootstrap:
+            raise SystemExit("P0: walking/driving world service not started: " + service)
+    if 'WaitForChild("WorldTraversalTests")).Run()' not in bootstrap:
+        raise SystemExit("P0: actual Studio road seams and residential access tests missing")
+    if "WorldPerimeter" not in world and "local extent = 2304" not in world:
+        raise SystemExit("P0: terrain must extend beyond the end of every road")
+    if 'StreetEnvironment' not in detail or 'Sidewalks' not in detail or 'Crosswalks' not in detail:
+        raise SystemExit("P0: pedestrian roads or crossing generation missing")
+    if '"StreetEnvironment"' not in production_gate:
+        raise SystemExit("P0: world should not report ready with missing sidewalks")
+    if '"StreetCitySprintRequest"' not in production_gate:
+        raise SystemExit("P0: running remote not included in startup gate")
+    if "lastVoidRescue" not in housing or "rootPart.Position.Y < -45" not in housing:
+        raise SystemExit("P0: prevent death from world streaming fall-through")
+    if 'anchor.Transparency = 1' not in housing or '"HouseFrontWing"' not in housing:
+        raise SystemExit("P0: home reverted to an impenetrable box")
+    if "PitchedRoof" not in architecture or "HomeWindow" not in architecture:
+        raise SystemExit("P1: residential facades lost architectural details")
+    if "buildingFacade(sector" in district_cosmetics or '"RoadMarkings"' in district_cosmetics:
+        raise SystemExit("P1: duplicate facades or lane paint cause visual flicker")
+    if "state.wants = false" not in sprint or "StreetCityStamina" not in sprint:
+        raise SystemExit("P0: sprint release or authoritative stamina absent")
+    if "StreetCitySprint" not in hud or "StreetCityHomePosition" not in hud:
+        raise SystemExit("P0: controls or residential navigation missing from player HUD")
+    if "Road sample hit wrong material" not in traversal or "House door is blocked" not in traversal:
+        raise SystemExit("P0: Studio world tests must cover asphalt and accessible homes")
 
     workflows = ROOT / ".github" / "workflows"
     if workflows.exists() and any(workflows.iterdir()):
