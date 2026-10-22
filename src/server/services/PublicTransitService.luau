@@ -79,7 +79,8 @@ end
 
 local function ride(player: Player, origin: Vector3, destination: Vector3,
     fare: number, waitSeconds: number, title: string)
-    if pending[player.UserId] or player.Parent ~= Players
+    local id = player.UserId
+    if pending[id] or player.Parent ~= Players
         or not Profile.IsLoaded(player) then return end
     local human, root = rootOf(player)
     if not human or not root or (root.Position - origin).Magnitude > 14 then return end
@@ -89,52 +90,71 @@ local function ride(player: Player, origin: Vector3, destination: Vector3,
         warn("[StreetCity Transit] Station floor preflight failed: " .. tostring(destination))
         return
     end
-    pending[player.UserId] = true
+    pending[id] = true
+    -- An uncharged reservation is safe to abandon, die or disconnect from.
+    -- Only the server can set the fare, destination and departure time.
     local operation = "transit_" .. HttpService:GenerateGUID(false):gsub("-", "")
     local refundOperation = "refund_" .. operation
-    local charged = Profile.Mutate(player, function(profile)
-        return Wallet.SpendCredits(profile, fare, operation)
-    end)
-    if not charged then
-        pending[player.UserId] = nil
-        message(player, "Fare declined or transaction uncertain; check your wallet")
-        return
-    end
-    local function refund(reason: string)
-        -- Refund is a separate idempotent transaction. Repeated callbacks use
-        -- the SAME ID; never mint multiple refunds for a single ticket.
-        local refunded = false
-        if player.Parent == Players and Profile.IsLoaded(player) then
-            refunded = Profile.Mutate(player, function(profile)
-                return Wallet.AwardCredits(profile, fare, refundOperation)
-            end)
-        end
-        if refunded then
-            message(player, reason .. " The ticket was refunded.")
-        else
-            message(player, reason .. " Refund not confirmed; check your wallet.")
-            warn("[StreetCity Transit] Ticket refund unconfirmed for " .. tostring(player.UserId)
-                .. " (" .. operation .. ")")
-        end
-    end
-    message(player, title .. " ticket purchased. Departure in "
-        .. tostring(waitSeconds) .. " seconds.")
+    message(player, title .. ": departure in " .. tostring(waitSeconds)
+        .. " seconds. Stay near the platform; fare charged at departure.")
+
     task.delay(waitSeconds, function()
+        local charged = false
         local arrived = false
+        local function refund(reason: string)
+            if not charged then
+                message(player, reason .. " No fare was charged.")
+                return
+            end
+            -- Stable operation ID for one ticket; never double-compensate.
+            local refunded = false
+            if player.Parent == Players and Profile.IsLoaded(player) then
+                refunded = Profile.Mutate(player, function(profile)
+                    return Wallet.AwardCredits(profile, fare, refundOperation)
+                end)
+            end
+            if refunded then
+                message(player, reason .. " Your fare was refunded.")
+            else
+                message(player, reason .. " Refund unconfirmed; check your wallet.")
+                warn("[StreetCity Transit] Unconfirmed refund for " .. tostring(id)
+                    .. " (" .. operation .. ")")
+            end
+        end
         local ok, err = pcall(function()
             if player.Parent ~= Players then return end
             if player.Character ~= character then
-                refund("Departure cancelled by character respawn.")
+                message(player, "Transit reservation cancelled after respawn; no charge")
+                return
+            end
+            local currentHuman, currentRoot = rootOf(player)
+            if not currentHuman or not currentRoot
+                or (currentRoot.Position - origin).Magnitude > 17 then
+                message(player, "Transit reservation expired: stay at the station; no charge")
+                return
+            end
+            if not safeArrival(destination, character) then
+                message(player, "Destination is blocked; no fare was charged")
+                return
+            end
+            -- Charge only when the rider is still eligible and physically at
+            -- this station. UpdateAsync may yield, so all checks repeat below.
+            charged = Profile.Mutate(player, function(profile)
+                return Wallet.SpendCredits(profile, fare, operation)
+            end)
+            if not charged then
+                message(player, "Fare unavailable or unconfirmed; check your wallet")
                 return
             end
             local h, r = rootOf(player)
-            if not h or not r then
-                refund("Departure cancelled because the character cannot travel.")
+            if player.Character ~= character or not h or not r
+                or (r.Position - origin).Magnitude > 17 then
+                refund("Transit departure cancelled while processing payment.")
                 return
             end
             local landing = safeArrival(destination, character)
             if not landing then
-                refund("Destination station became unsafe.")
+                refund("Destination became unsafe while processing payment.")
                 return
             end
             character:PivotTo(CFrame.new(landing))
@@ -143,11 +163,9 @@ local function ride(player: Player, origin: Vector3, destination: Vector3,
         end)
         if not ok then
             warn("[StreetCity Transit] Transfer failed: " .. tostring(err))
-            if not arrived then
-                refund("Transit transfer failed.")
-            end
+            if not arrived then refund("Transit transfer failed.") end
         end
-        pending[player.UserId] = nil
+        pending[id] = nil
     end)
 end
 
