@@ -106,7 +106,7 @@ def main() -> None:
     # from its preceding boolean condition with a comma. This catches the
     # previously committed TransitAndNpcTests missing-comma failure.
     missing_assert_comma = re.compile(
-        r"(?:~=|==)\\s*(?:nil|true|false)\\s*\\n\\s*\"[^\"\\n]+\"\\s*\\)"
+        r"(?:~=|==)\s*(?:nil|true|false)\s*\n\s*\"[^\"\n]+\"\s*\)"
     )
     for source in (ROOT / "src").rglob("*.luau"):
         code = source.read_text(encoding="utf-8")
