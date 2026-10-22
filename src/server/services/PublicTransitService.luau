@@ -135,11 +135,34 @@ local function metro(root: Instance)
             Vector3.new(6, 3, 6), Color3.fromRGB(78, 125, 188), false)
         local nextIndex = index % #Map.Metro + 1
         local destination = Map.Metro[nextIndex]
+        local platformAccess = create(corridor, "PlatformAccess_" .. station.id,
+            Vector3.new(station.x + 15, depth + 2, 9),
+            Vector3.new(4, 3, 4), Color3.fromRGB(85, 172, 180), false)
         prompt(entrance, "Metro: " .. station.label,
-            "Ride to " .. destination.label .. " (40 credits)", function(player)
-                ride(player, entrance.Position,
-                    Vector3.new(destination.x + 15, 2, 36), 40, 12, "Metro")
+            "Enter underground station", function(player)
+                local human, rootPart = rootOf(player)
+                if not human or not rootPart
+                    or (rootPart.Position - entrance.Position).Magnitude > 14 then return end
+                -- Surface -> station platforms does not charge a ticket.
+                player.Character:PivotTo(CFrame.new(platformAccess.Position
+                    + Vector3.new(0, 3, 0)))
             end)
+        prompt(platformAccess, "Metro: " .. station.label,
+            "Ride to " .. destination.label .. " (40 credits)", function(player)
+                ride(player, platformAccess.Position,
+                    Vector3.new(destination.x + 15, depth + 2, 9), 40, 12, "Metro")
+            end)
+        local stairs = create(corridor, "MetroExit_" .. station.id,
+            Vector3.new(station.x - 14, depth + 2, 9),
+            Vector3.new(4, 3, 4), Color3.fromRGB(69, 167, 105), false)
+        prompt(stairs, station.label, "Exit to street", function(player)
+            local human, rootPart = rootOf(player)
+            if not human or not rootPart or pending[player.UserId]
+                or (rootPart.Position - stairs.Position).Magnitude > 14 then return end
+            -- Exit next to entrance, always on the road-side pavement.
+            player.Character:PivotTo(CFrame.new(entrance.Position
+                + Vector3.new(7, 2, 0)))
+        end)
     end
     local train = Instance.new("Model")
     train.Name = "MetroTrain"
