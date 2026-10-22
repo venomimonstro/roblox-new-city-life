@@ -18,6 +18,13 @@ function Contract.Validate()
     local world = requireChild(workspace, "StreetCityPrototypeWorld", "Folder")
     requireChild(world, "Ground", "BasePart")
     requireChild(world, "Roads", "Folder")
+    local boundaries = requireChild(world, "WorldLimits", "Folder")
+    assert(#boundaries:GetChildren() == 4,
+        "[StreetCity Gate] Map border collision missing; players could fall into void")
+    for _, edge in boundaries:GetChildren() do
+        assert(edge:IsA("BasePart") and edge.CanCollide and not edge.CanQuery,
+            "[StreetCity Gate] World perimeter must block falling but not spoil raycasts")
+    end
     local streets = requireChild(world, "StreetEnvironment", "Folder")
     local walks = requireChild(streets, "Sidewalks", "Folder")
     local lines = requireChild(streets, "LanePaint", "Folder")
@@ -34,6 +41,15 @@ function Contract.Validate()
     for _, home in residential:GetChildren() do
         local terminal = requireChild(home, "GarageTerminal", "BasePart")
         requireChild(terminal, "GaragePrompt", "ProximityPrompt")
+        local shell = requireChild(home, "House", "BasePart")
+        assert(not shell.CanCollide, "[StreetCity Gate] Home reverted to solid cube")
+        requireChild(home, "HouseFloor", "BasePart")
+        local ceiling = requireChild(home, "HouseCeiling", "BasePart")
+        assert(ceiling.CanCollide, "[StreetCity Gate] Roof lets avatars fall into house")
+        local door = home:FindFirstChild("FrontDoor", true)
+        assert(door and door:IsA("BasePart") and door.CanCollide
+            and door:FindFirstChild("FrontDoorPrompt"),
+            "[StreetCity Gate] A house has no physical interactive doorway")
     end
     requireChild(world, "PersonalGarageTerminal", "BasePart")
     local locator = requireChild(world, "FindMyCarTerminal", "BasePart")
