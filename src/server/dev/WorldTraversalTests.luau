@@ -88,6 +88,45 @@ function Tests.Run()
             and door.Instance:FindFirstChild("FrontDoorPrompt"),
             "House door is blocked by geometry other than its usable hinged door")
     end
+    -- All seven neighborhood fleets must be present on connected asphalt,
+    -- never created on roofs or terrain outside the road grid.
+    local active = workspace:FindFirstChild("ActiveVehicles")
+    assert(active and active:IsA("Folder"), "Missing physical traffic fleet")
+    local civilian, police = 0, 0
+    local fleets: {[string]: number} = {}
+    for _, model in active:GetChildren() do
+        if model:IsA("Model") and model:GetAttribute("TrafficNPC") == true then
+            local chassis = model:FindFirstChild("Chassis")
+            assert(chassis and chassis:IsA("BasePart"), "NPC vehicle lacks chassis")
+            local rx = math.abs(chassis.Position.X
+                - math.round(chassis.Position.X / 100) * 100)
+            local rz = math.abs(chassis.Position.Z
+                - math.round(chassis.Position.Z / 100) * 100)
+            assert(rx < 6 or rz < 6,
+                "Traffic spawned off the connected 100-stud road grid")
+            local nearest = 100000
+            local best = ""
+            for _, district in Districts do
+                local dx = chassis.Position.X - district.x
+                local dz = chassis.Position.Z - district.z
+                local distance = dx * dx + dz * dz
+                if distance < nearest then
+                    nearest = distance
+                    best = district.id
+                end
+            end
+            fleets[best] = (fleets[best] or 0) + 1
+            if model:GetAttribute("IsPolice") then police += 1
+            else civilian += 1 end
+        end
+    end
+    assert(civilian >= 14 and police >= 3,
+        "World regressed to downtown-only traffic or lost police cars")
+    for _, district in Districts do
+        assert((fleets[district.id] or 0) >= 2,
+            "No autonomous traffic in district " .. district.id)
+    end
+
     local areas = world:FindFirstChild("DistrictBlockouts")
     for _, district in Districts do
         local area = areas and areas:FindFirstChild(district.id)
