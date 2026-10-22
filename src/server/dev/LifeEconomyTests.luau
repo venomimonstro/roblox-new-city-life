@@ -22,6 +22,18 @@ function Tests.Run()
     assert(p.credits + p.bankCredits + p.homeCredits < before,
         "Death should carry an actual financial penalty")
 
+    local saturated = Schema.New(10005)
+    saturated.credits, saturated.bankCredits = 2500, 1000
+    saturated.medicalDebt = 1000000
+    saturated.deathCount = 100000000
+    assert(Life.DeathSettlement(saturated, 5, "death_saturated_0001"),
+        "Maxed hospital debt must never suppress the next death settlement")
+    assert(saturated.medicalDebt == 1000000
+        and saturated.deathCount == 100000000
+        and Schema.Decode(saturated) ~= nil,
+        "Death ledger must saturate while keeping the account valid")
+    assert(not Life.DeathSettlement(saturated, 5, "death_saturated_0001"),
+        "Saturated debt cannot bypass receipt idempotency")
     local poor = Schema.New(10002)
     assert(Life.DeathSettlement(poor, 5, "death_test_0002"),
         "Broke wanted player still receives treatment")
