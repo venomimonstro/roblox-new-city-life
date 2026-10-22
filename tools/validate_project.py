@@ -35,6 +35,9 @@ REQUIRED = (
     "src/shared/PropertyCatalog.luau",
     "src/shared/PropertyTransactions.luau",
     "src/shared/HomeLayout.luau",
+    "src/shared/TransportSpecs.luau",
+    "src/server/services/TransportPhysicsService.luau",
+    "src/server/dev/TransportPhysicsTests.luau",
     "src/shared/LegalCareerCatalog.luau",
     "src/shared/TransitMap.luau",
     "src/shared/NpcLifeRules.luau",
@@ -452,6 +455,24 @@ def main() -> None:
     life = (ROOT / "src/server/services/NpcLifeService.luau").read_text(encoding="utf-8")
     if "task.wait(12)" not in life or "nearPlayer(" not in life:
         raise SystemExit("NPC life regression: missing scheduled updates or proximity LOD")
+
+    transport_source = (ROOT / "src/server/services/TransportPhysicsService.luau").read_text(encoding="utf-8")
+    transport_specs = (ROOT / "src/shared/TransportSpecs.luau").read_text(encoding="utf-8")
+    client_source = (ROOT / "src/client/bootstrap.client.luau").read_text(encoding="utf-8")
+    for name in ("bicycle", "motorcycle", "dirtbike", "truck", "tractor", "bus",
+                 "speedboat", "fishingboat", "propplane"):
+        if name not in transport_specs or 'id="' + name + '"' not in transport_source:
+            raise SystemExit("Transport class missing from specs or active fleet: " + name)
+    if "TransportPhysicsService.Start()" not in bootstrap:
+        raise SystemExit("New transport physics service not started")
+    if 'WaitForChild("TransportPhysicsTests")).Run()' not in bootstrap:
+        raise SystemExit("New transport studio simulation not connected")
+    if 'TransportInput' not in client_source or 'TransportInput' not in transport_source:
+        raise SystemExit("New vehicle controller has no client/server input link")
+    if 'ReadVoxels(' in transport_source:
+        raise SystemExit("Water force loop may misuse ReadVoxels multi-return or stress physics")
+    if "seat.Occupant ~= humanoid" not in transport_source:
+        raise SystemExit("Transport controls can be spoofed by remote clients")
 
     workflows = ROOT / ".github" / "workflows"
     if workflows.exists() and any(workflows.iterdir()):
