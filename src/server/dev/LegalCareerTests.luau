@@ -57,6 +57,20 @@ function Tests.Run()
             from = stop
         end
     end
+    -- Multi-platform: delivering to a doorstep after leaving the owned car.
+    local goal = Vector3.new(200, 2, 100)
+    local carNear = Vector3.new(188, 4, 102)
+    local walker = Vector3.new(195, 3, 104)
+    assert(Rules.CanDeliverAfterParking(goal, carNear, 100, 114, walker),
+        "Legitimate player should finish after parking the owned car")
+    assert(not Rules.CanDeliverAfterParking(goal, carNear, 100, 122, walker),
+        "Stale car parking location cannot complete mission")
+    assert(not Rules.CanDeliverAfterParking(goal, Vector3.new(70, 4, 100),
+        100, 105, walker), "Parked too far away is invalid")
+    assert(not Rules.CanDeliverAfterParking(goal, carNear, 100, 105,
+        Vector3.new(195, 50, 104)), "Teleporting above a waypoint must fail")
+    assert(not Rules.CanDeliverAfterParking(goal, nil, 100, 105, walker),
+        "Walking without owned car cannot complete driving career")
     local fake = Schema.New(314)
     local operation = "career_test_once_0001"
     assert(Wallet.AwardCredits(fake, 410, operation), "First salary should be granted")
