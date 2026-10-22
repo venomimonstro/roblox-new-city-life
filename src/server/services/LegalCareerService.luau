@@ -164,6 +164,16 @@ local function advance(player: Player, job: any, now: number, pos: Vector3)
     local sampleElapsed = now - (job.lastSampleAt or now)
     job.lastSampleAt = now
     job.lastPosition = pos
+    if CareerRules.IsUnobservedSample(sampleElapsed) then
+        -- No trustworthy samples during a lag spike or paused server. Clear
+        -- only this leg's unverified progress; allow normal play to resume.
+        job.moved = 0
+        job.lastDrivenPosition = nil
+        job.lastDrivenAt = -100
+        job.began = now
+        send(player, job, "Connection resumed; travel this leg again to verify your shift.")
+        return
+    end
     -- A teleport is not legitimate work movement; require a fresh walk/drive
     -- after the jump and never count the jump itself toward the mission.
     if change > CareerRules.MaximumMovementForSample(sampleElapsed, mode) then
