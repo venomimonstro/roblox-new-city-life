@@ -216,7 +216,8 @@ function Citizens.Start()
         accumulator = 0
         local now = os.clock()
         for _, actor in actors do
-            if actor.active and now >= actor.pausedUntil then
+            if actor.active and now >= actor.pausedUntil
+                and now >= (actor.model:GetAttribute("LifePauseUntil") or 0) then
                 if now > actor.nextChange then
                     actor.nextChange = now + 3 + actor.index
                     actor.angle += 1.3
