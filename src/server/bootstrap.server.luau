@@ -22,6 +22,10 @@ local CitizenService = require(Services:WaitForChild("CitizenService"))
 local CityJobsService = require(Services:WaitForChild("CityJobsService"))
 local LegalCareerService = require(Services:WaitForChild("LegalCareerService"))
 local WeatherService = require(Services:WaitForChild("WeatherService"))
+local ReputationService = require(Services:WaitForChild("ReputationService"))
+local TrafficSignalService = require(Services:WaitForChild("TrafficSignalService"))
+local DistrictDetailService = require(Services:WaitForChild("DistrictDetailService"))
+local BoxingService = require(Services:WaitForChild("BoxingService"))
 local CrimeEconomyService = require(Services:WaitForChild("CrimeEconomyService"))
 local LifestyleService = require(Services:WaitForChild("LifestyleService"))
 local ArmoryService = require(Services:WaitForChild("ArmoryService"))
@@ -35,9 +39,12 @@ local success, err = pcall(function()
     ProfileService.Start() -- Uses isolated memory-only profiles in unpublished Studio
     WantedService.Start()
     DistrictSocietyService.Start() -- incidents affect local population, safety and property index
+    ReputationService.Start()
     WorldService.Start()
     WeatherService.Start()
     DistrictService.Start()
+    DistrictDetailService.Start()
+    TrafficSignalService.Start()
     HousingService.Start() -- Homes exist before personal vehicle spawn and respawn
     local testCar = VehicleService.Start()
     if testCar then GarageService.Start(testCar) end
@@ -49,6 +56,7 @@ local success, err = pcall(function()
     CrimeEconomyService.Start()
     PropertyMarketService.Start()
     LifestyleService.Start()
+    BoxingService.Start()
     CitizenService.Start()
     BountyService.Start() -- before armed hits and death settlement
     LifeAndDeathService.Start() -- before first player death
