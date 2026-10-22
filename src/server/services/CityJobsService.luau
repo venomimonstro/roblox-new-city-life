@@ -118,7 +118,7 @@ function Jobs.Start()
                     message(player, "Finish your active work shift first")
                     return
                 end
-                active[id] = {id = def.id, began = os.clock(),
+                active[id] = {id = def.id, began = os.clock(), startedAt = os.clock(),
                     origin = rootPart.Position, lastPosition = rootPart.Position,
                     lastSampleAt = os.clock(), moved = 0, settling = false}
                 route(player, def)
@@ -231,7 +231,7 @@ function Jobs.Start()
             local player = Players:GetPlayerByUserId(id)
             -- Abandoned legacy shifts must not lock all professions forever.
             -- Treat slow network ticks separately from an expired assignment.
-            if os.clock() - shift.began > 1200 then
+            if os.clock() - (shift.startedAt or shift.began) > 1200 then
                 active[id] = nil
                 ShiftRegistry.Release(id, "legacy_" .. shift.id)
                 if player then
