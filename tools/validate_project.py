@@ -408,8 +408,8 @@ def main() -> None:
         raise SystemExit("P0: generator lacks reserved-lot occupancy collision checks")
     if "Enum.ModelLevelOfDetail.SLIM" not in infill:
         raise SystemExit("P1: distant generated city geometry not optimized for streaming")
-    for invariant in ("single physics hull", "driving lane",
-                      "additional buildings", "live road"):
+    for invariant in ("solids == 1", "New building occupies a driving lane",
+                      "City under-populated", "Enum.Material.Asphalt"):
         if invariant not in infill_test:
             raise SystemExit("P0: procedural city Studio acceptance missing " + invariant)
     if '"StreetCityMapAndQuality"' not in minimap or "StreetCityHomePosition" not in minimap:
