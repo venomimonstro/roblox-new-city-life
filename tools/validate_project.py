@@ -495,6 +495,17 @@ def main() -> None:
     if 'WaitForChild("LifeEconomyTests")).Run()' not in bootstrap:
         raise SystemExit("P0: Studio debt and free resurrection tests disconnected")
 
+    # A teleport must invalidate a mission rather than silently relocate
+    # its trusted origin to an attacker-controlled position.
+    career = (ROOT / "src/server/services/LegalCareerService.luau").read_text(encoding="utf-8")
+    legacy = (ROOT / "src/server/services/CityJobsService.luau").read_text(encoding="utf-8")
+    if 'job.status = "invalidated"' not in career:
+        raise SystemExit("P0: career teleport does not invalidate mission")
+    if 'ShiftRegistry.Release(id, "legacy_" .. shift.id)' not in legacy:
+        raise SystemExit("P0: legacy job teleport does not release shift lock")
+    if 'shift.origin = pos' in legacy.split("if delta > CareerRules.MaximumMovementForSample")[1].split("elseif delta > 0")[0]:
+        raise SystemExit("P0: legacy job re-bases origin after teleport")
+
     workflows = ROOT / ".github" / "workflows"
     if workflows.exists() and any(workflows.iterdir()):
         raise SystemExit("GitHub Actions workflows are explicitly disabled")
