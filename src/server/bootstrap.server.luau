@@ -94,6 +94,7 @@ local success, err = pcall(function()
     WorldSurfaceAudit.Validate() -- fail launch on missing drivable roads or unsafe home surfaces
     StartupContract.Validate()
     if RunService:IsStudio() then
+        require(script.Parent:WaitForChild("dev"):WaitForChild("PlayerJourneyProbe")).Start()
         require(script.Parent:WaitForChild("dev"):WaitForChild("SmokeTests")).Run()
         require(script.Parent:WaitForChild("dev"):WaitForChild("CityTraversalTests")).Run()
         require(script.Parent:WaitForChild("dev"):WaitForChild("CityInfillTests")).Run()
