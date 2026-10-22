@@ -86,6 +86,19 @@ wanted.TextSize = 22
 wanted.Text = ""
 wanted.Parent = gui
 
+local safetyNet = Instance.new("TextLabel")
+safetyNet.Name = "HomeSavingsAndClinic"
+safetyNet.Position = UDim2.fromOffset(14, 183)
+safetyNet.Size = UDim2.new(0.86, 0, 0, 22)
+safetyNet.BackgroundTransparency = 0.2
+safetyNet.BackgroundColor3 = Color3.fromRGB(18, 25, 35)
+safetyNet.Font = Enum.Font.Gotham
+safetyNet.TextColor3 = Color3.fromRGB(221, 229, 219)
+safetyNet.TextSize = 12
+safetyNet.TextXAlignment = Enum.TextXAlignment.Left
+safetyNet.Text = "Home cash 0 | Hospital debt 0"
+safetyNet.Parent = gui
+
 local bodyStats = Instance.new("TextLabel")
 bodyStats.Name = "BodyStats"
 bodyStats.Position = UDim2.fromOffset(14, 88)
@@ -114,9 +127,14 @@ task.spawn(function()
     if not remote or not remote:IsA("RemoteEvent") then return end
     remote.OnClientEvent:Connect(function(credits: any, cars: any, selected: any,
         bank: any, goods: any, fitness: any, bodyFat: any,
-        communityBank: any, deeds: any, allegiance: any)
+        communityBank: any, deeds: any, allegiance: any,
+        homeCash: any, medicalDebt: any, deathCount: any)
         if type(credits) ~= "number" or type(cars) ~= "number"
             or type(selected) ~= "string" then return end
+        safetyNet.Text = string.format("Home safe %d | Medical debt %d | Deaths %d",
+            if type(homeCash) == "number" then homeCash else 0,
+            if type(medicalDebt) == "number" then medicalDebt else 0,
+            if type(deathCount) == "number" then deathCount else 0)
         local safeBank = if type(bank) == "number" then bank else 0
         local loot = if type(goods) == "number" then goods else 0
         local localBank = if type(communityBank) == "number" then communityBank else 0
