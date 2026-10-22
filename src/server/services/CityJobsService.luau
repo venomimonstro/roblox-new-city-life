@@ -229,6 +229,17 @@ function Jobs.Start()
         for id, shift in pairs(active) do
             if shift.settling then continue end
             local player = Players:GetPlayerByUserId(id)
+            -- Abandoned legacy shifts must not lock all professions forever.
+            -- Treat slow network ticks separately from an expired assignment.
+            if os.clock() - shift.began > 1200 then
+                active[id] = nil
+                ShiftRegistry.Release(id, "legacy_" .. shift.id)
+                if player then
+                    route(player, nil)
+                    message(player, "Shift expired after 20 minutes. Choose a new job.")
+                end
+                continue
+            end
             local root = player and player.Character
                 and player.Character:FindFirstChild("HumanoidRootPart")
             if root and root:IsA("BasePart") then
