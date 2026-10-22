@@ -21,4 +21,20 @@ function Rules.CanFinishLeg(a: Vector3, b: Vector3, position: Vector3,
     return (Vector3.new(position.X, 0, position.Z)
         - Vector3.new(b.X, 0, b.Z)).Magnitude <= 18
 end
+-- An owned car may be parked just outside the mission circle. Do not
+-- require the driver to hold the seat while completing a delivery prompt.
+-- This is ONLY a mode allowance; the caller must also supply verified
+-- in-vehicle movement for the entire required distance.
+function Rules.CanDeliverAfterParking(target: Vector3, lastDrivenPos: Vector3?,
+    lastDrivenAt: number, now: number, onFootPos: Vector3): boolean
+    if not lastDrivenPos or type(lastDrivenAt) ~= "number"
+        or now < lastDrivenAt or now - lastDrivenAt > 20 then return false end
+    local drivenDistance = (Vector3.new(lastDrivenPos.X, 0, lastDrivenPos.Z)
+        - Vector3.new(target.X, 0, target.Z)).Magnitude
+    local footDistance = (Vector3.new(onFootPos.X, 0, onFootPos.Z)
+        - Vector3.new(target.X, 0, target.Z)).Magnitude
+    return drivenDistance <= 25 and footDistance <= 16
+        and math.abs(onFootPos.Y - target.Y) <= 12
+end
+
 return table.freeze(Rules)
