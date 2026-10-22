@@ -71,10 +71,8 @@ local function bagTraining(player: Player, style: string)
     local root = rootFor(player)
     if not root or (root.Position - (ARENA + Vector3.new(-35,0,0))).Magnitude > 12 then return end
     bagCooldown[player.UserId] = now
-    local operation = "bag_" .. HttpService:GenerateGUID(false):gsub("-", "")
     -- Training awards XP without money; a second server call cannot mint cash.
     local success = Profile.Mutate(player, function(profile)
-        if not Profile.IsLoaded(player) then return false end
         return Progress.Earn(profile, "boxing", STYLES[style].xp)
     end)
     if success then
