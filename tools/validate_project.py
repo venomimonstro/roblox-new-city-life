@@ -341,6 +341,15 @@ def main() -> None:
     if '"StreetEnvironment"' not in detail:
         raise SystemExit("P0: missing sole global sidewalk generator")
 
+    traffic_source = (ROOT / "src/server/services/TrafficService.luau").read_text(encoding="utf-8")
+    world_test = (ROOT / "src/server/dev/WorldTraversalTests.luau").read_text(encoding="utf-8")
+    if "for regionIndex, center in neighborhoods do" not in traffic_source:
+        raise SystemExit("Traffic regression: all NPC cars must populate seven districts")
+    if "civilian >= 14 and police >= 3" not in world_test:
+        raise SystemExit("Traversal test missing population/road validation")
+    if "Traffic agent failed" not in traffic_source or "createAgent(agent.points" not in traffic_source:
+        raise SystemExit("Traffic regression: NPC recovery not enabled")
+
     workflows = ROOT / ".github" / "workflows"
     if workflows.exists() and any(workflows.iterdir()):
         raise SystemExit("GitHub Actions workflows are explicitly disabled")
