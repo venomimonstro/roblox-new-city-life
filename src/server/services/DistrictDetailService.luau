@@ -43,49 +43,29 @@ local function streetlight(parent: Instance, position: Vector3)
     light.Shadows=false
     light.Parent=glass
 end
-local function buildingFacade(root: Instance, building: BasePart, districtId: string, num: number)
-    local tint=palettes[districtId] or palettes.downtown
-    local size=building.Size
-    local floors=math.clamp(math.floor((size.Y-2)/9),1,10)
-    local color=tint[2]
-    local mat=Enum.Material.Glass
-    for floor=1,floors do
-        local y=building.Position.Y-size.Y/2+5+9*(floor-1)
-        for column=-1,1 do
-            local x=building.Position.X+column*7.8
-            for _,sign in {-1,1} do
-                detail(root,"Window",Vector3.new(3.7,4,0.12),
-                    CFrame.new(x,y,building.Position.Z+sign*(size.Z/2+0.08)),
-                    color,mat)
-            end
-        end
-    end
-    local door=detail(root,"Entrance",Vector3.new(5,6,0.15),
-        CFrame.new(building.Position.X,
-            building.Position.Y-size.Y/2+3.2,
-            building.Position.Z+size.Z/2+0.1),
-        Color3.fromRGB(66,79,88),Enum.Material.Glass)
-    local awning=detail(root,"ShopAwning",Vector3.new(10,0.3,3),
-        CFrame.new(door.Position+Vector3.new(0,3.5,1.2)),
-        tint[1],Enum.Material.Metal)
-    if num%2==0 then
-        local board=detail(root,"StorefrontSign",Vector3.new(11,2.1,0.2),
-            CFrame.new(door.Position+Vector3.new(0,5.7,0)),
-            tint[1],Enum.Material.Metal)
-        local gui=Instance.new("SurfaceGui")
-        gui.Face=Enum.NormalId.Front
-        gui.CanvasSize=Vector2.new(440,84)
-        gui.LightInfluence=0.15
-        gui.Parent=board
-        local txt=Instance.new("TextLabel")
-        txt.Size=UDim2.fromScale(1,1)
-        txt.BackgroundTransparency=1
-        txt.Text=signs[(num-1)%#signs+1]
-        txt.Font=Enum.Font.GothamBold
-        txt.TextScaled=true
-        txt.TextColor3=Color3.fromRGB(238,236,227)
-        txt.Parent=gui
-    end
+-- CityArchitecture is the ONLY facade/window generator. This service adds
+-- storefront identity and lamps without double-layered windows and z-fighting.
+local function storefrontIdentity(root: Instance, building: BasePart, districtId: string, num: number)
+    if num % 2 ~= 0 then return end
+    local tint = palettes[districtId] or palettes.downtown
+    local front = building.Position.Z + building.Size.Z / 2 + 0.23
+    local ground = building.Position.Y - building.Size.Y / 2
+    local board = detail(root, "StorefrontSign", Vector3.new(11, 2.1, 0.2),
+        CFrame.new(building.Position.X, ground + 6.2, front),
+        tint[1], Enum.Material.Metal)
+    local gui = Instance.new("SurfaceGui")
+    gui.Face = Enum.NormalId.Front
+    gui.CanvasSize = Vector2.new(440, 84)
+    gui.LightInfluence = 0.15
+    gui.Parent = board
+    local txt = Instance.new("TextLabel")
+    txt.Size = UDim2.fromScale(1, 1)
+    txt.BackgroundTransparency = 1
+    txt.Text = signs[(num - 1) % #signs + 1]
+    txt.Font = Enum.Font.GothamBold
+    txt.TextScaled = true
+    txt.TextColor3 = Color3.fromRGB(238, 236, 227)
+    txt.Parent = gui
 end
 function Decor.Start()
     local world=workspace:WaitForChild("StreetCityPrototypeWorld")
@@ -103,7 +83,7 @@ function Decor.Start()
         for _,building in area:GetChildren() do
             if building:IsA("BasePart") and building.Name:match("^Building_") then
                 n+=1
-                buildingFacade(sector,building,district.id,n)
+                storefrontIdentity(sector,building,district.id,n)
                 count+=1
             end
         end
@@ -116,28 +96,6 @@ function Decor.Start()
             end
         end
     end
-    -- Road markings ride just above road render surface. Collision/query off.
-    local roads=world:WaitForChild("Roads")
-    local laneMarks=Instance.new("Folder")
-    laneMarks.Name="RoadMarkings"
-    laneMarks.Parent=cosmetic
-    local stripe=Color3.fromRGB(207,191,133)
-    local marked=0
-    for _,road in roads:GetChildren() do
-        if road:IsA("BasePart") and road.Name:match("NorthSouth")
-            and math.abs(road.Position.X) <= 600 then
-            detail(laneMarks,"LaneStripe",Vector3.new(0.4,0.04,road.Size.Z-8),
-                CFrame.new(road.Position.X,-0.555,road.Position.Z),
-                stripe,Enum.Material.SmoothPlastic)
-            marked+=1
-        elseif road:IsA("BasePart") and road.Name:match("EastWest")
-            and math.abs(road.Position.Z) <= 600 then
-            detail(laneMarks,"LaneStripe",Vector3.new(road.Size.X-8,0.04,0.4),
-                CFrame.new(road.Position.X,-0.55,road.Position.Z),
-                stripe,Enum.Material.SmoothPlastic)
-            marked+=1
-        end
-    end
-    print("[StreetCity] District detail pass: "..count.." facades, streetlamps, "..marked.." lane markings")
+    print("[StreetCity] District detail pass: "..count.." storefront profiles, streetlamps")
 end
 return Decor
