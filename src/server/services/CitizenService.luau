@@ -216,7 +216,20 @@ function Citizens.Start()
         accumulator = 0
         local now = os.clock()
         for _, actor in actors do
-            if actor.active and now >= actor.pausedUntil
+            if not actor.active then continue end
+            -- Background citizens still age/work in NpcLifeService, but
+            -- expensive pivot and facing updates run only near real players.
+            local nearby = false
+            for _, player in Players:GetPlayers() do
+                local rootPart = player.Character
+                    and player.Character:FindFirstChild("HumanoidRootPart")
+                if rootPart and rootPart:IsA("BasePart")
+                    and (rootPart.Position - actor.model:GetPivot().Position).Magnitude < 165 then
+                    nearby = true
+                    break
+                end
+            end
+            if nearby and now >= actor.pausedUntil
                 and now >= (actor.model:GetAttribute("LifePauseUntil") or 0) then
                 if now > actor.nextChange then
                     actor.nextChange = now + 3 + actor.index
