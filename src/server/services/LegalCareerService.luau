@@ -22,12 +22,16 @@ local sessionsStarted = 0
 local function send(player: Player, job: any?, detail: string?)
     if player.Parent ~= Players then return end
     if not job then
+        player:SetAttribute("StreetCityWorkWaypoint", nil)
         remote:FireClient(player, nil)
         if detail then notice:FireClient(player, detail) end
         return
     end
     local target = job.definition.stops[job.stage]
     if target then
+        -- The minimap reads the same server-authoritative waypoint as the
+        -- mission tracker. Never let clients select their own destination.
+        player:SetAttribute("StreetCityWorkWaypoint", target)
         remote:FireClient(player, job.definition.title, job.stage,
             #job.definition.stops, target, job.definition.reward,
             job.definition.mode, detail or "Reach the next workplace")
