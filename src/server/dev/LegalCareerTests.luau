@@ -57,6 +57,15 @@ function Tests.Run()
             from = stop
         end
     end
+    assert(Rules.MaximumMovementForSample(0.3, "foot") > 7,
+        "Normal sprint distance must not trigger false positive")
+    assert(Rules.MaximumMovementForSample(0.3, "foot") < 20,
+        "Foot teleport microsteps must not earn career travel")
+    assert(Rules.MaximumMovementForSample(0.3, "vehicle") > 35,
+        "Ordinary city driving must be permitted")
+    assert(Rules.MaximumMovementForSample(0, "foot") == 0
+        and Rules.MaximumMovementForSample(2, "unknown") == 0,
+        "Invalid or duplicate sample times fail closed")
     -- Multi-platform: delivering to a doorstep after leaving the owned car.
     local goal = Vector3.new(200, 2, 100)
     local carNear = Vector3.new(188, 4, 102)
