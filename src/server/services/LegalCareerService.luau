@@ -9,6 +9,7 @@ local Profile = require(script.Parent:WaitForChild("ProfileService"))
 local Wallet = require(ReplicatedStorage.Shared:WaitForChild("GarageTransactions"))
 local Catalog = require(ReplicatedStorage.Shared:WaitForChild("LegalCareerCatalog"))
 local CareerRules = require(ReplicatedStorage.Shared:WaitForChild("CareerRules"))
+local Progress = require(ReplicatedStorage.Shared:WaitForChild("SkillProgression"))
 local Society = require(script.Parent:WaitForChild("DistrictSocietyService"))
 local ShiftRegistry = require(script.Parent:WaitForChild("WorkShiftRegistry"))
 local Career = {}
@@ -104,12 +105,21 @@ local function settle(player: Player, job: any)
     if job.status ~= "active" or running[id] ~= job then return end
     job.status = "settling"
     task.spawn(function()
+        local paidAmount = job.definition.reward
+        local newLevel = 1
         -- Re-read account lock before write. No mission can pay a second time
         -- while the UpdateAsync request remains unresolved.
         local confirmed = false
         local safe, err = pcall(function()
             confirmed = Profile.Mutate(player, function(profile)
-                return Wallet.AwardCredits(profile, job.definition.reward, job.operation)
+                local xp = Progress.Xp(profile, job.definition.id)
+                local amount = Progress.Wage(job.definition.reward, xp)
+                if not Wallet.AwardCredits(profile, amount, job.operation) then return false end
+                if not Progress.Earn(profile, job.definition.id, 60) then return false end
+                Progress.Conduct(profile, 1)
+                paidAmount = amount
+                newLevel = Progress.Level(Progress.Xp(profile, job.definition.id))
+                return true
             end)
         end)
         if not safe then warn("[StreetCity] Career payout failed: " .. tostring(err)) end
@@ -120,7 +130,7 @@ local function settle(player: Player, job: any)
             cooldown[id] = os.clock() + 25
             Society.EffectForPlayer(player, "civic", 1)
             send(player, nil, job.definition.title .. ": +"
-                .. tostring(job.definition.reward) .. " credits paid")
+                .. tostring(paidAmount) .. " credits | skill level " .. tostring(newLevel))
         else
             cooldown[id] = os.clock() + 12
             send(player, nil, "Payment unconfirmed; check saved balance. Never repeat a pending job for a second payment.")
