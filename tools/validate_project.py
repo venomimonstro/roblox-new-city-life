@@ -121,6 +121,10 @@ def main() -> None:
         "local charged =", 1)[0]
     if "safeArrival(destination, character)" not in before_fare:
         raise SystemExit("Transit charges fare before checking destination ground")
+    if "task.delay(waitSeconds" not in before_fare or "(currentRoot.Position - origin).Magnitude > 17" not in before_fare:
+        raise SystemExit("Transit charges before departure or lets riders leave the station")
+    if 'pending[id] = operation' not in transit or 'pending[id] ~= operation' not in transit:
+        raise SystemExit("Old transit reservation can interfere with a reconnected player")
     if "refundOperation" not in transit or "Wallet.AwardCredits" not in transit:
         raise SystemExit("Transit cannot idempotently compensate failed trips")
     if "GetPartBoundsInBox" not in transit or "StreetCity Transit" not in transit:
