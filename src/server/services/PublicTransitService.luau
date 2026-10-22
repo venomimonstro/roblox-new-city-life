@@ -10,7 +10,7 @@ local Profile = require(script.Parent:WaitForChild("ProfileService"))
 local Wallet = require(ReplicatedStorage.Shared:WaitForChild("GarageTransactions"))
 local Map = require(ReplicatedStorage.Shared:WaitForChild("TransitMap"))
 local Transit = {}
-local pending: {[number]: boolean} = {}
+local pending: {[number]: string} = {}
 local notice: RemoteEvent
 
 local function create(parent: Instance, name: string, pos: Vector3,
@@ -90,15 +90,17 @@ local function ride(player: Player, origin: Vector3, destination: Vector3,
         warn("[StreetCity Transit] Station floor preflight failed: " .. tostring(destination))
         return
     end
-    pending[id] = true
     -- An uncharged reservation is safe to abandon, die or disconnect from.
-    -- Only the server can set the fare, destination and departure time.
+    -- Tokenize by ticket so a previous Player instance cannot clear a later
+    -- reservation if a UserId leaves and reconnects before departure.
     local operation = "transit_" .. HttpService:GenerateGUID(false):gsub("-", "")
+    pending[id] = operation
     local refundOperation = "refund_" .. operation
     message(player, title .. ": departure in " .. tostring(waitSeconds)
         .. " seconds. Stay near the platform; fare charged at departure.")
 
     task.delay(waitSeconds, function()
+        if pending[id] ~= operation then return end
         local charged = false
         local arrived = false
         local function refund(reason: string)
@@ -165,7 +167,7 @@ local function ride(player: Player, origin: Vector3, destination: Vector3,
             warn("[StreetCity Transit] Transfer failed: " .. tostring(err))
             if not arrived then refund("Transit transfer failed.") end
         end
-        pending[id] = nil
+        if pending[id] == operation then pending[id] = nil end
     end)
 end
 
