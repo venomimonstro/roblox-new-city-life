@@ -3,6 +3,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Layout = require(ReplicatedStorage.Shared:WaitForChild("HomeLayout"))
+local Architecture = require(script.Parent:WaitForChild("CityArchitecture"))
 
 local Housing = {}
 local occupied: {[number]: number} = {}
@@ -146,6 +147,7 @@ local function buildPlot(root: Instance, slot: number)
             if not ok then warn("[StreetCity] Home garage interaction failed: " .. tostring(err)) end
         end
     end)
+    Architecture.DecorateHome(estate, plot, slot)
 end
 
 function Housing.Start()
