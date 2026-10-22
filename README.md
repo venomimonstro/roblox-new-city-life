@@ -1,32 +1,40 @@
-# Street City Online — Roblox open-world life simulator
+# Street City Online — Roblox open-world game prototype
 
-**Status: multi-system development prototype in source, not a public release.** Roads, cars, racing and garage are the initial gameplay loop. Future city activities may include property, jobs and more; those have **not** been implemented.
+**Current status (22 October 2026): extensive game source and Studio tests, NOT a verified playable public release.** Player homes/garages, cars, roads, district NPCs, open-world traffic, legal careers, races, crime, police, shops, in-game credits, fishing, nature, transit and local social systems are implemented at different prototype levels. They have **not** passed an end-to-end Roblox Studio, live multi-client and DataStore acceptance.
 
-## Getting started (no CI / GitHub Actions)
+## Actually try the game (no GitHub Actions/CI)
 
-1. Install Roblox Studio and Rojo 7.
-2. Clone this repository; run `rojo serve default.project.json`.
-3. In Roblox Studio, open a fresh Baseplate place, **delete its stock Baseplate and SpawnLocation**, install the Rojo Studio plugin and connect.
-4. Press Play; the server generates a small test city and blockouts for seven districts.
-5. In **unpublished Studio**, the profile is explicitly temporary and stored only in server memory. A shared test car and personal cars are available. Progress disappears when the test session ends.
-6. Drive your own car through the green race-start marker to begin a solo time trial. Follow yellow numbered checkpoints. Finishing with valid movement earns **650 credits**.
-7. At orange garage-shop stands, buy new or used parts with earned credits. Use the install stand when parked and outside the car. A blue personal garage terminal switches between owned cars if multiple exist.
-8. Check the Output panel for `[StreetCity]` errors and smoke-test assertions. Use **Test -> Server & Clients** for multiplayer checks.
+1. Install Roblox Studio, Rojo 7 and the Rojo Studio plugin.
+2. Clone this repository. In the repo run `python3 tools/release_gate.py`. **This must pass.** If Rojo is missing, the gate returns an error, not a false PASS.
+3. In a new Roblox Studio place, delete its default Baseplate and SpawnLocation, then use `rojo serve default.project.json` and connect the Studio plugin. Alternatively run `rojo build default.project.json -o StreetCity.rbxlx` and open the built place.
+4. Press **Play**. Roblox server services dynamically construct the city. Look in **View → Output** for `[StreetCity Gate] PASS`, `[StreetCity Surface] PASS` and individual Studio suites.
+5. The new `[StreetCity Playability]` probe checks the **actual connected test player**: live character, assigned home, ground, matching saved personal car, driving remote and job waypoint remote. **Only `PASS` for your player counts toward basic spawn acceptance.** It does not prove the driving physics.
+6. Walk out of your house, find your personal vehicle in its garage, enter the driver's seat and drive. Test a complete race, one legal driving career, one foot career, parts purchasing, car recall after destruction, death/home respawn, and the city bank. Do not assume feature availability just because a model or stand exists.
+7. In **Test → Server & Clients**, start two clients. Confirm distinct home plots, ownership locks, independent wallets, traffic and mutual visibility.
+8. Run separate **published private staging** tests for real DataStore persistence across rejoin and server hops. Use **test accounts and a separate staging place**, never a production account by accident.
+9. Repeat on a low-end Android phone and gamepad; profile FPS, replication, memory and road/terrain collisions across all seven districts before public release.
 
-For a build file (requires locally installed Rojo):
-```sh
-rojo build default.project.json -o StreetCity.rbxlx
-```
+### Important data protection
 
-**Runtime acceptance has NOT been run here.** Luau compiler, Rojo and Studio are not available in this environment. Do not publish the public game, accept Robux, or trust persistence until all release gates are passed.
+**All ordinary Roblox Studio Play sessions now use memory-only profiles by default**, including Studio tests of an already published place. Money, cars and jobs earned there are temporary. To *deliberately* test persistent DataStore, use a separate private staging place and set the DataModel boolean attribute `StreetCityAllowStudioDataStore = true` before the server starts. Ensure Studio API access is enabled and never connect that test to production player wallets.
+
+Outside Studio, the project uses the Roblox DataStore with session leases. Real DataStore compatibility, safe rejoin after outages and cross-server consistency remain unverified.
+
+## Release blockers
+
+- Rojo build, Luau diagnostics, actual Play and the startup/playability suites still need **runtime execution** and receipts.
+- Multiplayer ownership, physical vehicle handling, NPC travel, real mobile controls, teleport safety, jobs and credit transactions need observed end-to-end acceptance.
+- Persistent wealth, live DataStore concurrency and all real-money receipts must be validated before opening purchases or a public launch.
+- Global player-owned property/title transfer and cross-server district politics are not production-ready.
+
+**The game is a development prototype. A full commercial release is blocked.** See [global acceptance matrix](docs/GLOBAL_ACCEPTANCE_MATRIX_2026-10-22.md) and [playability audit](docs/PLAYER_PLAYABILITY_AUDIT_2026-10-22.md).
 
 ## Architecture
 
-- `src/shared`: data catalogs, profile schema V2 with V1 migration, drivetrain and economy rules, race validation.
-- `src/server`: authoritative car controls, player garage, DataStore sessions, credit shops and race checkpoints.
-- `src/client`: speed display, light controls, driver input transport and minimal balance/notifications.
-- `docs/`: engineering decisions, active sprint receipts, roadmap and validation requirements.
+- `src/shared/`: schemas, catalogs, pure driving, economy and mission rules.
+- `src/server/services/`: Roblox-authoritative city, player homes, profiles, cars, economy, jobs and NPCs.
+- `src/server/dev/`: Studio-only suites including `PlayerJourneyProbe.luau`.
+- `src/client/`: player HUD, controls and minimap.
+- `tools/release_gate.py`: local source and Rojo build gate; **not** a Roblox runtime test.
 
-In published Roblox staging the persistent DataStore is used. Unpublished Studio uses sandbox-only profiles. The shared free test car is disabled outside unpublished Studio.
-
-Prioritize: vehicle handling tests, profile contention testing, real mobile controls and the first fully playable loop before expanding the world. See [roadmap](docs/roadmap.md), [architecture](docs/architecture.md), and [current acceptance checklist](docs/sprints/SPRINT_07C_08_10.md).
+Do not add GitHub Actions or CI for this repository.
