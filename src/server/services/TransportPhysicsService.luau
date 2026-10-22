@@ -145,17 +145,13 @@ local function usePhysics(state: any)
         end
     elseif state.kind == "water" then
         -- Buoyancy requires actual Terrain water, not arbitrary y=0 land.
-        local material = workspace.Terrain:ReadVoxels(
-            Region3.new(body.Position - Vector3.new(2, 3, 2),
-                body.Position + Vector3.new(2, 3, 2)):ExpandToGrid(4), 4)
-        local nearWater = false
-        for i = 1, #material do
-            for j = 1, #material[i] do
-                for k = 1, #material[i][j] do
-                    if material[i][j][k] == Enum.Material.Water then nearWater = true end
-                end
-            end
-        end
+        local waterRay = RaycastParams.new()
+        waterRay.FilterType = Enum.RaycastFilterType.Exclude
+        waterRay.FilterDescendantsInstances = {car.Model}
+        waterRay.IgnoreWater = false
+        local waterHit = workspace:Raycast(body.Position + Vector3.new(0, 8, 0),
+            Vector3.new(0, -34, 0), waterRay)
+        local nearWater = waterHit ~= nil and waterHit.Material == Enum.Material.Water
         if nearWater then
             suspension = Vector3.yAxis * mass
                 * math.clamp(workspace.Gravity - velocity.Y * 16, 0, workspace.Gravity * 1.3)
