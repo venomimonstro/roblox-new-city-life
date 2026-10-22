@@ -121,16 +121,12 @@ function Jobs.Start()
                     message(player, "Workplace route incomplete. You must actually travel between locations.")
                     return
                 end
-                if def.driving then
-                    local human = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-                    local seat = human and human.SeatPart
-                    if not seat or not seat:IsA("VehicleSeat")
-                        or not seat:FindFirstAncestorOfClass("Model")
-                        or seat:FindFirstAncestorOfClass("Model"):GetAttribute("OwnerUserId") ~= id
-                        or seat.Occupant ~= human then
-                        message(player, "Taxi mission requires driving a city vehicle")
-                        return
-                    end
+                -- The taxi route must be driven in the player's own car,
+                -- but the customer drop-off may be confirmed AFTER parking
+                -- and stepping out: seated interaction fails on some devices.
+                if def.driving and not shift.didDrive then
+                    message(player, "Drive the route in your own car, then park to finish")
+                    return
                 end
                 shift.settling = true
                 local paid = credit(player, def.reward)
@@ -225,7 +221,10 @@ function Jobs.Start()
                         and model ~= nil and model:GetAttribute("OwnerUserId") == id
                         and seat.Occupant == humanoid
                 end
-                if delta > 0 and delta < 55 and validMode then shift.moved += delta end
+                if delta > 0 and delta < 55 and validMode then
+                    shift.moved += delta
+                    if shift.id == "taxi" then shift.didDrive = true end
+                end
             end
         end
     end)
