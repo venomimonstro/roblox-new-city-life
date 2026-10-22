@@ -35,6 +35,8 @@ local function geometry(
     p.Material = Enum.Material.SmoothPlastic
     p.Color = color
     p.CanCollide = false
+    p.CanQuery = false
+    p.CanTouch = false
     p.Parent = model
     weldTo(root, p)
     return p
@@ -72,6 +74,44 @@ function VehicleFactory.Create(parent: Instance, position: Vector3, heading: num
     geometry(model, chassis, "Windshield", Vector3.new(5, 1.6, 0.18),
         CFrame.new(0, 2.3, -1.55) * CFrame.Angles(math.rad(-19), 0, 0),
         Color3.fromRGB(52, 105, 140))
+    local roof = geometry(model, chassis, "CabRoof",
+        Vector3.new(5.0, 0.35, 3.5), CFrame.new(0, 3.2, 0.85),
+        Color3.fromRGB(205, 53, 63))
+    roof.Material = Enum.Material.Metal
+    local backWindow = geometry(model, chassis, "RearWindow",
+        Vector3.new(4.8, 1.5, 0.13),
+        CFrame.new(0, 2.30, 2.55) * CFrame.Angles(math.rad(21), 0, 0),
+        Color3.fromRGB(59, 98, 125))
+    backWindow.Transparency = 0.20
+    local windshield = model:FindFirstChild("Windshield")
+    if windshield and windshield:IsA("BasePart") then
+        windshield.Material = Enum.Material.Glass
+        windshield.Transparency = 0.18
+    end
+    geometry(model, chassis, "FrontGrille",
+        Vector3.new(3.8, 0.68, 0.12), CFrame.new(0, 0.18, -5.34),
+        Color3.fromRGB(38, 43, 46))
+    geometry(model, chassis, "FrontBumper",
+        Vector3.new(5.7, 0.32, 0.43), CFrame.new(0, -0.35, -5.43),
+        Color3.fromRGB(114, 121, 128))
+    geometry(model, chassis, "RearBumper",
+        Vector3.new(5.7, 0.32, 0.43), CFrame.new(0, -0.35, 5.43),
+        Color3.fromRGB(105, 112, 119))
+    for _, x in {-1, 1} do
+        local mirror = geometry(model, chassis, "WingMirror",
+            Vector3.new(0.55, 0.28, 0.9),
+            CFrame.new(x * 2.9, 1.8, -1.35),
+            Color3.fromRGB(40, 45, 50))
+        mirror.Material = Enum.Material.Metal
+        geometry(model, chassis, "Taillight",
+            Vector3.new(1.2, 0.42, 0.16),
+            CFrame.new(x * 2.15, 0.65, 5.35),
+            Color3.fromRGB(181, 41, 48)).Material = Enum.Material.Neon
+    end
+    local pickupRail = geometry(model, chassis, "PickupBedRail",
+        Vector3.new(5.2, 0.18, 3.4),
+        CFrame.new(0, 2.08, 3.7), Color3.fromRGB(73, 77, 81))
+    pickupRail.Transparency = 1
 
     for _, x in { -3.1, 3.1 } do
         for _, z in { -3.5, 3.5 } do
@@ -173,6 +213,14 @@ local catalogPaint = {
 function VehicleFactory.ApplyCatalog(car: Car, catalogId: string): boolean
     local appearance = catalogPaint[catalogId]
     if not appearance then return false end
+    local cabRoof = car.Model:FindFirstChild("CabRoof")
+    if cabRoof and cabRoof:IsA("BasePart") then
+        cabRoof.Color = appearance.color
+    end
+    local rail = car.Model:FindFirstChild("PickupBedRail")
+    if rail and rail:IsA("BasePart") then
+        rail.Transparency = if catalogId == "starter_american_pickup" then 0 else 1
+    end
     car.Model.Name = appearance.name
     car.Model:SetAttribute("VehicleCatalogId", catalogId)
     local hood = car.Model:FindFirstChild("Hood")
