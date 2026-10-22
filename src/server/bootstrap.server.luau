@@ -6,6 +6,7 @@ local WorldService = require(Services:WaitForChild("WorldService"))
 local StreetDetailService = require(Services:WaitForChild("StreetDetailService"))
 local SprintService = require(Services:WaitForChild("SprintService"))
 local VehicleService = require(Services:WaitForChild("VehicleService"))
+local TransportPhysicsService = require(Services:WaitForChild("TransportPhysicsService"))
 local DistrictService = require(Services:WaitForChild("DistrictService"))
 local GarageService = require(Services:WaitForChild("GarageService"))
 local ProfileService = require(Services:WaitForChild("ProfileService"))
@@ -57,6 +58,7 @@ local success, err = pcall(function()
     TrafficSignalService.Start()
     HousingService.Start() -- Homes exist before personal vehicle spawn and respawn
     local testCar = VehicleService.Start()
+    TransportPhysicsService.Start() -- dedicated cycle, heavy, marine and aviation handling
     if testCar then GarageService.Start(testCar) end
     PersonalGarage.Start()
     GarageMarketplaceService.Start()
