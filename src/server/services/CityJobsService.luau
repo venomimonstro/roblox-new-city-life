@@ -166,7 +166,6 @@ function Jobs.Start()
                 return
             end
             fishingReady[id] = nil
-        pendingFishSale[id] = nil
             catches[id] = math.min(8, (catches[id] or 0) + 1)
             message(player, "Fish caught! Bring it to the fish market.")
         end)
@@ -244,6 +243,7 @@ function Jobs.Start()
         cooldown[id] = nil
         catches[id] = nil -- V1 session-only fish; persistent catch inventory is future work
         fishingReady[id] = nil
+        pendingFishSale[id] = nil
     end)
     print("[StreetCity] City jobs ready: 5 services plus fishing and fish market")
 end
