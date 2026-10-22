@@ -231,7 +231,7 @@ function Jobs.Start()
             local player = Players:GetPlayerByUserId(id)
             -- Abandoned legacy shifts must not lock all professions forever.
             -- Treat slow network ticks separately from an expired assignment.
-            if os.clock() - (shift.startedAt or shift.began) > 1200 then
+            if ShiftRegistry.Expired(shift.startedAt or shift.began, os.clock()) then
                 active[id] = nil
                 ShiftRegistry.Release(id, "legacy_" .. shift.id)
                 if player then
