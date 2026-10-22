@@ -591,7 +591,7 @@ def main() -> None:
     if career_source.count("job.origin = if job.stage == 1 then job.definition.start") < 2:
         raise SystemExit("P0: teleport/connection loss can fake a completed work route")
     legacy = (ROOT / "src/server/services/CityJobsService.luau").read_text(encoding="utf-8")
-    if "shift.didDrive" not in legacy or "seat.Occupant == humanoid" not in legacy:
+    if "shift.drivenDistance" not in legacy or "seat.Occupant == humanoid" not in legacy:
         raise SystemExit("P0: taxi must require owned driver history while permitting parked dropoff")
 
     workflows = ROOT / ".github" / "workflows"
