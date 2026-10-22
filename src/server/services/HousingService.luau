@@ -4,6 +4,7 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local Layout = require(ReplicatedStorage.Shared:WaitForChild("HomeLayout"))
 local Architecture = require(script.Parent:WaitForChild("CityArchitecture"))
 
@@ -13,6 +14,7 @@ local assigned: {[number]: number} = {}
 local markers: {[number]: BasePart} = {}
 local spawned: {[number]: number} = {}
 local lastGarage: {[number]: number} = {}
+local lastVoidRescue: {[number]: number} = {}
 local lastWorldRescue: {[number]: number} = {}
 local garageHandler: ((Player) -> ())? = nil
 local respawnHandler: ((Player) -> ())? = nil
@@ -252,6 +254,45 @@ function Housing.Start()
     end
     Players.PlayerAdded:Connect(playerJoined)
     for _, player in Players:GetPlayers() do playerJoined(player) end
+    -- Physics recovery net: road/terrain streaming glitches should never
+    -- charge hospital money or permanently strand an owned car.
+    local rescueAccumulator = 0
+    RunService.Heartbeat:Connect(function(dt)
+        rescueAccumulator += dt
+        if rescueAccumulator < 0.5 then return end
+        rescueAccumulator = 0
+        local now = os.clock()
+        for _, player in Players:GetPlayers() do
+            local character = player.Character
+            local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+            local human = character and character:FindFirstChildOfClass("Humanoid")
+            if rootPart and rootPart:IsA("BasePart") and human and human.Health > 0
+                and rootPart.Position.Y < -45
+                and now - (lastVoidRescue[player.UserId] or -100) >= 15 then
+                lastVoidRescue[player.UserId] = now
+                local home = Housing.GetHomePosition(player)
+                if home then
+                    local wasDriving = human.SeatPart ~= nil
+                    if wasDriving then human.Sit = false end
+                    character:PivotTo(CFrame.new(home))
+                    rootPart.AssemblyLinearVelocity = Vector3.zero
+                    rootPart.AssemblyAngularVelocity = Vector3.zero
+                    if wasDriving and respawnHandler then
+                        task.defer(function()
+                            if player.Parent == Players then
+                                local safe, err = pcall(respawnHandler :: (Player) -> (), player)
+                                if not safe then
+                                    warn("[StreetCity] Fallen owned-car recovery: " .. tostring(err))
+                                end
+                            end
+                        end)
+                    end
+                    warn("[StreetCity] Recovered player from below world: " .. player.UserId)
+                end
+            end
+        end
+    end)
+
     Players.PlayerRemoving:Connect(function(player)
         local id = player.UserId
         local slot = assigned[id]
@@ -264,6 +305,7 @@ function Housing.Start()
         player:SetAttribute("StreetCityHomePosition", nil)
         spawned[id] = nil
         lastGarage[id] = nil
+        lastVoidRescue[id] = nil
         lastWorldRescue[id] = nil
     end)
     -- Failsafe for Roblox collision tunnelling or unexpected physics gaps.
