@@ -18,6 +18,9 @@ REQUIRED = (
     "src/client/bootstrap.client.luau",
     "src/shared/Config.luau",
     "src/shared/VehicleMath.luau",
+    "src/shared/VehicleDamageRules.luau",
+    "src/server/dev/VehicleDamageTests.luau",
+    "docs/GLOBAL_ACCEPTANCE_MATRIX_2026-10-22.md",
     "src/shared/VehicleCatalog.luau",
     "src/shared/ShopCatalog.luau",
     "src/shared/ProfileSchema.luau",
@@ -420,6 +423,16 @@ def main() -> None:
         raise SystemExit("P0: personal home spawn must prefetch streaming terrain")
     if '"CityInfill"' not in (ROOT / "src/server/services/StartupContract.luau").read_text(encoding="utf-8"):
         raise SystemExit("P0: startup contract does not verify the populated new city")
+
+    vehicle_damage = (ROOT / "src/shared/VehicleDamageRules.luau").read_text(encoding="utf-8")
+    vehicle_service = (ROOT / "src/server/services/VehicleService.luau").read_text(encoding="utf-8")
+    boot = (ROOT / "src/server/bootstrap.server.luau").read_text(encoding="utf-8")
+    if "Damage.Impact(" not in vehicle_service or "Damage.DriveFactor(" not in vehicle_service:
+        raise SystemExit("P0: impact/crash model not connected to live server vehicle physics")
+    if 'WaitForChild("VehicleDamageTests")).Run()' not in boot:
+        raise SystemExit("P0: vehicle damage Studio tests not hooked up")
+    if "if not grounded or deltaSpeed < 15" not in vehicle_damage:
+        raise SystemExit("P0: impact from airborne fall could damage before landing")
 
     workflows = ROOT / ".github" / "workflows"
     if workflows.exists() and any(workflows.iterdir()):
