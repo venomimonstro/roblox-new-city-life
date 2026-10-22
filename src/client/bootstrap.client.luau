@@ -157,6 +157,7 @@ end)
 
 local lightsRemote = remotes:WaitForChild("ToggleHeadlights") :: RemoteEvent
 local vehicleInput = remotes:WaitForChild("VehicleInput") :: RemoteEvent
+local transportInput = remotes:WaitForChild("TransportInput") :: RemoteEvent
 local messageRemote = remotes:WaitForChild("GarageNotice") :: RemoteEvent
 
 local toast = Instance.new("TextLabel")
@@ -635,7 +636,12 @@ RunService.RenderStepped:Connect(function(dt)
         end
     end
     if seat then
-        vehicleInput:FireServer(seat.ThrottleFloat, seat.SteerFloat)
+        local activeModel = seat:FindFirstAncestorOfClass("Model")
+        if activeModel and activeModel:GetAttribute("TransportType") ~= nil then
+            transportInput:FireServer(seat.ThrottleFloat, seat.SteerFloat)
+        else
+            vehicleInput:FireServer(seat.ThrottleFloat, seat.SteerFloat)
+        end
         local kmh = seat.AssemblyLinearVelocity.Magnitude * 0.28 * 3.6
         speed.Text = string.format("%03d km/h", math.floor(kmh + 0.5))
     end
