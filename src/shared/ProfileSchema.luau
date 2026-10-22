@@ -34,6 +34,7 @@ function Schema.New(userId: number?)
         credits = 0, bankCredits = 0, communityBankCredits = 0, stolenGoods = 0,
         homeCredits = 0, medicalDebt = 0, deathCount = 0,
         securityBonds = {},
+        bountyClaims = {},
         skills = {}, morality = 0,
         nutrition = 80, fitness = 15, bodyFat = 25,
         allegiance = "independent", allegianceChangedAt = 0,
@@ -155,6 +156,7 @@ function Schema.Decode(raw: any): any?
     -- garage inventory or existing personal property titles.
     local homeCredits, medicalDebt, deathCount = 0, 0, 0
     local securityBonds = {}
+    local bountyClaims: {[string]: number} = {}
     if raw.schemaVersion == 4 then
         if raw.homeCredits ~= nil then
             if not int(raw.homeCredits, 0, 10000000000) then return nil end
@@ -167,6 +169,18 @@ function Schema.Decode(raw: any): any?
         if raw.deathCount ~= nil then
             if not int(raw.deathCount, 0, 100000000) then return nil end
             deathCount = raw.deathCount
+        end
+        if raw.bountyClaims ~= nil then
+            if type(raw.bountyClaims) ~= "table" then return nil end
+            local count = 0
+            for victimId, lastPaidAt in pairs(raw.bountyClaims) do
+                count += 1
+                if count > 20 or type(victimId) ~= "string"
+                    or #victimId < 1 or #victimId > 20
+                    or victimId:match("^%d+$") == nil
+                    or not int(lastPaidAt, 0, 5000000000) then return nil end
+                bountyClaims[victimId] = lastPaidAt
+            end
         end
         if raw.securityBonds ~= nil then
             if type(raw.securityBonds) ~= "table" then return nil end
@@ -203,6 +217,7 @@ function Schema.Decode(raw: any): any?
         skills = skills, morality = morality,
         homeCredits = homeCredits, medicalDebt = medicalDebt,
         deathCount = deathCount, securityBonds = securityBonds,
+        bountyClaims = bountyClaims,
         bankCredits = bankCredits, communityBankCredits = communityBankCredits,
         stolenGoods = stolenGoods, nutrition = nutrition, fitness = fitness,
         bodyFat = bodyFat, realEstate = propertyInfo, ownedProperties = deeds,
