@@ -75,6 +75,7 @@ REQUIRED = (
     "src/server/services/ArmoryService.luau",
     "src/server/dev/CityLifeTests.luau",
     "src/server/dev/LegalCareerTests.luau",
+    "src/server/dev/CareerWorldTests.luau",
     "src/server/dev/TransitAndNpcTests.luau",
     "src/server/dev/LifeEconomyTests.luau",
     "src/server/dev/DistrictEconomyTests.luau",
@@ -505,6 +506,12 @@ def main() -> None:
         raise SystemExit("P0: legacy job teleport does not release shift lock")
     if 'shift.origin = pos' in legacy.split("if delta > CareerRules.MaximumMovementForSample")[1].split("elseif delta > 0")[0]:
         raise SystemExit("P0: legacy job re-bases origin after teleport")
+
+    if 'WaitForChild("CareerWorldTests")).Run()' not in bootstrap:
+        raise SystemExit("P0: playable career routes lack Studio ground-collision acceptance")
+    world_jobs = (ROOT / "src/server/dev/CareerWorldTests.luau").read_text(encoding="utf-8")
+    if "workspace:Raycast" not in world_jobs or "Fish_Sell" not in world_jobs:
+        raise SystemExit("P0: not all career and fishing destinations are ground-checked")
 
     workflows = ROOT / ".github" / "workflows"
     if workflows.exists() and any(workflows.iterdir()):
