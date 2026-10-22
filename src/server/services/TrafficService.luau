@@ -5,6 +5,7 @@ local RunService = game:GetService("RunService")
 local VehicleService = require(script.Parent:WaitForChild("VehicleService"))
 local Wanted = require(script.Parent:WaitForChild("WantedService"))
 local Signals = require(script.Parent:WaitForChild("TrafficSignalService"))
+local Players = game:GetService("Players")
 local Traffic = {}
 local agents: {any} = {}
 local CATALOG = {
@@ -187,6 +188,27 @@ function Traffic.Start()
             local agent = agents[index]
             if agent.car == nil then
                 if os.clock() >= (agent.respawnAt or 0) then
+                    -- Do not materialize a rigid-body vehicle onto a player
+                    -- near this segment during a short incident/recovery pause.
+                    local previous = agent.points[(agent.originIndex - 2)
+                        % #agent.points + 1]
+                    local destination = agent.points[agent.originIndex]
+                    local midpoint = previous:Lerp(destination,
+                        if agent.police then 0.7 else 0.5)
+                    local occupied = false
+                    for _, player in Players:GetPlayers() do
+                        local rootPart = player.Character
+                            and player.Character:FindFirstChild("HumanoidRootPart")
+                        if rootPart and rootPart:IsA("BasePart")
+                            and (rootPart.Position - midpoint).Magnitude < 18 then
+                            occupied = true
+                            break
+                        end
+                    end
+                    if occupied then
+                        agent.respawnAt = os.clock() + 10
+                        continue
+                    end
                     local fresh = createAgent(agent.points, agent.originIndex,
                         agent.catalogId, agent.police)
                     if fresh then
