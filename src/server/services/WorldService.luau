@@ -46,7 +46,7 @@ function WorldService.Start()
     -- oversized Parts and prevents falling into voids between far districts.
     local terrain = workspace.Terrain
     local chunk = 256
-    local extent = 1792
+    local extent = 2304 -- safe 484-stud buffer beyond last road at +/-1820
     for x = -extent + chunk / 2, extent - chunk / 2, chunk do
         for z = -extent + chunk / 2, extent - chunk / 2, chunk do
             terrain:FillBlock(CFrame.new(x, -5, z),
@@ -80,12 +80,15 @@ function WorldService.Start()
     buildings.Name = "Buildings"
     buildings.Parent = root
 
+    -- Waterfront deliberately lies OUTSIDE every connected driving road.
+    -- Earlier beach collided across the z=400/500 roads and the decorative
+    -- ocean visually covered the z=600/800 routes.
     -- Coastal and hillside silhouettes: decorative placeholders, not final districts.
-    part(root, "Beach", Vector3.new(850, 0.6, 125), Vector3.new(0, -0.45, 462), Color3.fromRGB(216, 195, 139), Enum.Material.Sand)
-    part(root, "Ocean", Vector3.new(1300, 0.2, 350), Vector3.new(0, -0.65, 694), Color3.fromRGB(42, 134, 180), Enum.Material.Glass, false)
+    part(root, "Beach", Vector3.new(1800, 0.6, 155), Vector3.new(0, -0.45, 1915), Color3.fromRGB(216, 195, 139), Enum.Material.Sand)
+    part(root, "Ocean", Vector3.new(2000, 0.2, 340), Vector3.new(0, -0.65, 2120), Color3.fromRGB(42, 134, 180), Enum.Material.Glass, false)
     for i = 1, 6 do
         local hill = part(root, "Hill_" .. i, Vector3.new(85, rng:NextInteger(25, 95), 90),
-            Vector3.new(-355 + (i - 1) * 130, 5, -340),
+            Vector3.new(-1700 + (i - 1) * 130, 9, -2040),
             Color3.fromRGB(63, 113, 76), Enum.Material.Grass)
         hill.Shape = Enum.PartType.Ball
         hill.CanCollide = false
