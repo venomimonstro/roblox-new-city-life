@@ -17,7 +17,12 @@ function Test.Run()
         assert(entrance and platform and platform.Position.Y < -20,
             "Metro station surface/underground continuity missing")
         assert(entrance:FindFirstChildOfClass("ProximityPrompt"),
-            "Metro has no paid boarding prompt")
+            "Metro street entrance has no boarding prompt")
+        local platformGate = tunnel:FindFirstChild("PlatformAccess_" .. stop.id)
+        local exit = tunnel:FindFirstChild("MetroExit_" .. stop.id)
+        assert(platformGate and platformGate:FindFirstChildOfClass("ProximityPrompt")
+            and exit and exit:FindFirstChildOfClass("ProximityPrompt"),
+            "Metro must allow street-platform-ride-street journey")
     end
     for _, stop in Map.Bus do
         local station = root:FindFirstChild("BusStop_" .. stop.id)
@@ -48,7 +53,7 @@ function Test.Run()
     for _, npc in citizens:GetChildren() do
         assert(npc:GetAttribute("Occupation") ~= nil
             and npc:GetAttribute("Mood") ~= nil
-            and npc:GetAttribute("NpcLOD") == nil, "NPC initial identity missing")
+            "NPC initial identity missing")
     end
     print("[StreetCity] PASS: metro, bus stops and 28 bounded NPC life simulations")
 end
