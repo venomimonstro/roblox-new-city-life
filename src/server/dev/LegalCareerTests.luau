@@ -66,6 +66,15 @@ function Tests.Run()
     assert(Rules.MaximumMovementForSample(0, "foot") == 0
         and Rules.MaximumMovementForSample(2, "unknown") == 0,
         "Invalid or duplicate sample times fail closed")
+    assert(not Rules.IsUnobservedSample(0.31),
+        "Regular 300ms driving / walking samples must count")
+    assert(Rules.IsUnobservedSample(6.1)
+        and Rules.IsUnobservedSample(0)
+        and Rules.IsUnobservedSample(-1)
+        and Rules.IsUnobservedSample(0 / 0),
+        "Long stalls, invalid clocks and NaN must not create route progress")
+    assert(Rules.MaximumMovementForSample(6.1, "vehicle") == 0,
+        "Disconnected client movement must never earn wages")
     -- Multi-platform: delivering to a doorstep after leaving the owned car.
     local goal = Vector3.new(200, 2, 100)
     local carNear = Vector3.new(188, 4, 102)
