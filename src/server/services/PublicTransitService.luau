@@ -64,7 +64,9 @@ local function safeArrival(destination: Vector3, character: Model?): Vector3?
     -- the avatar-sized capsule has room, excluding the supporting floor.
     local overlap = OverlapParams.new()
     overlap.FilterType = Enum.RaycastFilterType.Exclude
-    overlap.FilterDescendantsInstances = excluded
+    -- Traffic cars are excluded from the *floor raycast* but MUST be tested
+    -- as obstacles around the avatar landing volume.
+    overlap.FilterDescendantsInstances = if character then {character} else {}
     local obstructions = workspace:GetPartBoundsInBox(
         CFrame.new(landing + Vector3.new(0, 1, 0)),
         Vector3.new(2.5, 3.0, 2.5), overlap)
@@ -117,6 +119,7 @@ local function ride(player: Player, origin: Vector3, destination: Vector3,
     message(player, title .. " ticket purchased. Departure in "
         .. tostring(waitSeconds) .. " seconds.")
     task.delay(waitSeconds, function()
+        local arrived = false
         local ok, err = pcall(function()
             if player.Parent ~= Players then return end
             if player.Character ~= character then
@@ -134,11 +137,14 @@ local function ride(player: Player, origin: Vector3, destination: Vector3,
                 return
             end
             character:PivotTo(CFrame.new(landing))
+            arrived = true
             message(player, title .. ": arrived")
         end)
         if not ok then
             warn("[StreetCity Transit] Transfer failed: " .. tostring(err))
-            refund("Transit transfer failed.")
+            if not arrived then
+                refund("Transit transfer failed.")
+            end
         end
         pending[player.UserId] = nil
     end)
