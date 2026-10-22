@@ -20,6 +20,8 @@ local NatureService = require(Services:WaitForChild("NatureService"))
 local BankNetworkService = require(Services:WaitForChild("BankNetworkService"))
 local PropertyMarketService = require(Services:WaitForChild("PropertyMarketService"))
 local TrafficService = require(Services:WaitForChild("TrafficService"))
+local PublicTransitService = require(Services:WaitForChild("PublicTransitService"))
+local NpcLifeService = require(Services:WaitForChild("NpcLifeService"))
 local CitizenService = require(Services:WaitForChild("CitizenService"))
 local CityJobsService = require(Services:WaitForChild("CityJobsService"))
 local LegalCareerService = require(Services:WaitForChild("LegalCareerService"))
@@ -66,6 +68,7 @@ local success, err = pcall(function()
     LifestyleService.Start()
     BoxingService.Start()
     CitizenService.Start()
+    NpcLifeService.Start()
     BountyService.Start() -- before armed hits and death settlement
     LifeAndDeathService.Start() -- before first player death
     ArmoryService.Start()
@@ -76,6 +79,7 @@ local success, err = pcall(function()
     BankNetworkService.Start()
     CityInfillService.Start() -- Only occupy free parcels after homes, jobs and shops exist
     TrafficService.Start()
+    PublicTransitService.Start()
     WorldSurfaceAudit.Validate() -- fail launch on missing drivable roads or unsafe home surfaces
     StartupContract.Validate()
     if RunService:IsStudio() then
