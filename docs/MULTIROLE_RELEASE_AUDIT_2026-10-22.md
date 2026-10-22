@@ -59,6 +59,18 @@ This additional audit pass found actual defects in production and Studio QA, not
 - **16 of 16 previously created Python state-machine tests** ran successfully on the older independent economy model. The model does not execute present-day Roblox/Luau source and must not be used to certify current game behavior.
 - **Not executed here:** Rojo build, Luau compiler, Roblox Studio Play, mobile client, two-server DataStore, published staging, production receipts and concurrency/profiling. They remain release blockers.
 
+### Follow-up security correction: delayed ticket exploit
+
+Subsequent adversarial review identified an additional paid-transport vulnerability:
+
+1. A rider could book transit near a station, leave its area during the departure delay and still teleport to a different part of the city.
+2. The fare was previously taken at booking, making pre-departure death, disconnect and cancellation financially unfair.
+3. A departing Player instance could clear a newly joined instance's pending ticket because state was keyed only by UserId.
+
+**Corrected in code:** station reservations are initially free, the actual passenger and current distance from the origin are revalidated at departure, funds are charged only then, destination collision is revalidated after the yielding DataStore call, and individual tickets use a unique operation token so stale callbacks cannot touch newer reservations. If a charge commits but arrival becomes invalid, compensation is a separate idempotent write with an immutable refund ID.
+
+**Release check:** `validate_project.py` now checks departure ordering, station proximity and UserId ticket isolation. Real in-engine quit/rejoin simulation and two-server transfer consistency remain mandatory and unexecuted.
+
 ### Release decision
 
 **HOLD — not final commercial release.** The game now contains stricter source safeguards, but no Roblox-engine proof that the live player journey is stable. Optional Robux currency purchases must remain disabled until durable, tested `MarketplaceService.ProcessReceipt` handling exists. Global uniqueness of properties and cross-server territory control remain unverified/incomplete. Do not interpret a static gate or checked-in sprint as production acceptance.
