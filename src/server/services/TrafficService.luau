@@ -185,16 +185,29 @@ function Traffic.Start()
         accum = 0
         for index = #agents, 1, -1 do
             local agent = agents[index]
+            if agent.car == nil then
+                if os.clock() >= (agent.respawnAt or 0) then
+                    local fresh = createAgent(agent.points, agent.originIndex,
+                        agent.catalogId, agent.police)
+                    if fresh then
+                        agents[index] = fresh
+                    else
+                        agent.respawnAt = os.clock() + 15
+                    end
+                end
+                continue
+            end
             local ok, status = pcall(updateAgent, agent)
             if not ok then
                 warn("[StreetCity] Traffic agent failed: " .. tostring(status))
             elseif status == "remove" then
                 table.remove(agents, index)
-                -- Keep the city populated even after wrecks, despawns or theft.
-                -- Each slot replaces only its previous destroyed/abandoned car.
-                local replacement = createAgent(agent.points, agent.originIndex,
-                    agent.catalogId, agent.police)
-                if replacement then table.insert(agents, replacement) end
+                -- Do not instantly spawn into a player standing on the old
+                -- wreck. Recover one slot only after its previous location
+                -- has remained free for a short cooldown.
+                agent.respawnAt = os.clock() + 8
+                agent.car = nil
+                table.insert(agents, agent)
             end
         end
     end)
