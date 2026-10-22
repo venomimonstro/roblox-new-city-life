@@ -4,7 +4,6 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
 local Layout = require(ReplicatedStorage.Shared:WaitForChild("HomeLayout"))
 local Architecture = require(script.Parent:WaitForChild("CityArchitecture"))
 
