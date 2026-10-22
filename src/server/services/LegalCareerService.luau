@@ -93,7 +93,7 @@ local function launch(player: Player, definition: any, pad: Part)
     running[id] = {
         definition = definition, status = "active", stage = 1,
         origin = root.Position, lastPosition = root.Position,
-        began = os.clock(), moved = 0,
+        began = os.clock(), startedAt = os.clock(), moved = 0,
         operation = "career_" .. HttpService:GenerateGUID(false):gsub("-", ""),
         missionId = sessionsStarted,
     }
@@ -150,6 +150,15 @@ local function advance(player: Player, job: any, now: number, pos: Vector3)
     local prior = job.lastPosition
     local change = (Vector3.new(pos.X, 0, pos.Z) - Vector3.new(prior.X, 0, prior.Z)).Magnitude
     job.lastPosition = pos
+    -- A teleport is not legitimate work movement; require a fresh walk/drive
+    -- after the jump and never count the jump itself toward the mission.
+    if change > 55 then
+        job.moved = 0
+        job.began = now
+        job.origin = pos
+        send(player, job, "Large position jump detected; travel route reset")
+        return
+    end
     -- 0.35s tick at <=150stud/s; jump/teleport spikes do not count.
     if change > 0 and change < 55 and (mode ~= "vehicle" or validVehicle)
         and (mode ~= "foot" or isValidTransport) then
@@ -216,7 +225,10 @@ function Career.Start()
                     endMission(player, "Shift interrupted by hospitalization; start a new job")
                 end)
             end
-            endMission(player, "Previous mission cancelled after respawn")
+            local ongoing = running[player.UserId]
+            if ongoing and ongoing.status == "active" then
+                endMission(player, "Previous mission cancelled after respawn")
+            end
         end)
     end
     Players.PlayerAdded:Connect(connect)
@@ -236,6 +248,17 @@ function Career.Start()
         for id, job in pairs(running) do
             if job.status ~= "active" then continue end
             local player = Players:GetPlayerByUserId(id)
+            -- Expire abandoned missions; otherwise a disconnected or idle
+            -- employee can indefinitely lock themselves out of every job.
+            if now - (job.startedAt or job.began) > 1200 then
+                if player then
+                    endMission(player, "Shift expired after 20 minutes; accept a new job")
+                else
+                    running[id] = nil
+                    ShiftRegistry.Release(id, "career_" .. job.definition.id)
+                end
+                continue
+            end
             local char = player and player.Character
             local humanoid = char and char:FindFirstChildOfClass("Humanoid")
             local root = char and char:FindFirstChild("HumanoidRootPart")
