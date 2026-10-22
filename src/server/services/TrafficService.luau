@@ -57,6 +57,17 @@ local function createAgent(waypoints: {Vector3}, segment: number,
     local car = VehicleService.SpawnTrafficVehicle(catalogId, midpoint, yaw, police)
     if not car then return nil end
     mannequin(car, police)
+    local serial = (#agents + segment * 7) % 17
+    car.Model:SetAttribute("DriverOccupation",
+        if police then "patrol officer"
+        elseif serial % 4 == 0 then "courier"
+        elseif serial % 4 == 1 then "office worker"
+        elseif serial % 4 == 2 then "taxi driver" else "commuter")
+    car.Model:SetAttribute("DriverMood",
+        if serial % 3 == 0 then "cheerful"
+        elseif serial % 3 == 1 then "tired" else "focused")
+    car.Model:SetAttribute("DriverTrips", 0)
+    car.Model:SetAttribute("DriverShift", if police then "on duty" else "commuting")
     return {
         car = car, points = waypoints, nextIndex = segment,
         police = police, lastPos = midpoint,
@@ -103,6 +114,8 @@ local function updateAgent(agent: any)
     end
     local displacement = Vector3.new(target.X - position.X, 0, target.Z - position.Z)
     if displacement.Magnitude < 22 then
+        car.Model:SetAttribute("DriverTrips",
+            (car.Model:GetAttribute("DriverTrips") or 0) + 1)
         agent.nextIndex = agent.nextIndex % #agent.points + 1
         target = agent.points[agent.nextIndex]
         displacement = Vector3.new(target.X - position.X, 0, target.Z - position.Z)
