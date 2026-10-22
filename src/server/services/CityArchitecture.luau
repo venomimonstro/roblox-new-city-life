@@ -181,6 +181,37 @@ function Architecture.DecorateHome(estate: Model, plot: any, slot: number)
                 Color3.fromRGB(226, 222, 208), Enum.Material.Metal)
         end
     end
+    -- Landscaped yards and street furniture are lightweight and noncolliding,
+    -- so nobody gets snagged while running to their garage.
+    for _, side in {-1, 1} do
+        local trunk = detail(exterior, "GardenTreeTrunk",
+            Vector3.new(0.8, 5.5, 0.8),
+            CFrame.new(x + side * 10.0, 2.0, z + side * 3),
+            Color3.fromRGB(104, 76, 51), Enum.Material.Wood)
+        local crown = detail(exterior, "GardenTreeCrown",
+            Vector3.new(5.8, 5.8, 5.8),
+            trunk.CFrame * CFrame.new(0, 3.4, 0),
+            if slot % 2 == 0 then Color3.fromRGB(86, 137, 86)
+            else Color3.fromRGB(105, 143, 80), Enum.Material.Grass)
+        crown.Shape = Enum.PartType.Ball
+        for i = 1, 3 do
+            local hedge = detail(exterior, "YardHedge",
+                Vector3.new(2.0, 1.15, 1.35),
+                CFrame.new(x + side * (8.2 + i * 1.9), -0.3,
+                    z + towardsRoad * (2 + i * 1.65)),
+                Color3.fromRGB(62, 112, 65), Enum.Material.Grass)
+            hedge.Shape = Enum.PartType.Ball
+        end
+    end
+    detail(exterior, "MailboxPost", Vector3.new(0.34, 2.4, 0.34),
+        CFrame.new(plot.garage.X - 8.4, 0.25,
+            plot.garage.Z + towardsRoad * 15.8),
+        Color3.fromRGB(109, 100, 87), Enum.Material.Wood)
+    detail(exterior, "Mailbox",
+        Vector3.new(1.55, 0.8, 1.2),
+        CFrame.new(plot.garage.X - 8.4, 1.5,
+            plot.garage.Z + towardsRoad * 15.8),
+        Color3.fromRGB(74, 94, 115), Enum.Material.Metal)
     local sign = estate:FindFirstChild("GarageTerminal")
     if sign and sign:IsA("BasePart") then
         sign.Size = Vector3.new(1.25, 2.2, 1.25)
