@@ -536,6 +536,47 @@ ContextActionService:SetPosition("BoxingJab",UDim2.fromScale(0.67,0.69))
 ContextActionService:SetPosition("BoxingHook",UDim2.fromScale(0.77,0.69))
 ContextActionService:SetPosition("BoxingUppercut",UDim2.fromScale(0.87,0.69))
 
+-- Running is a real hold action (Shift / gamepad L3 / on-screen RUN),
+-- with server-authoritative stamina and speed caps.
+local sprintRemote = ReplicatedStorage:WaitForChild("StreetCitySprintRequest", 20)
+local stamina = Instance.new("TextLabel")
+stamina.Name = "RunningStamina"
+stamina.Position = UDim2.fromOffset(14, 208)
+stamina.Size = UDim2.fromOffset(230, 23)
+stamina.BackgroundTransparency = 0.35
+stamina.BackgroundColor3 = Color3.fromRGB(22, 34, 42)
+stamina.TextColor3 = Color3.fromRGB(156, 231, 194)
+stamina.TextSize = 12
+stamina.TextXAlignment = Enum.TextXAlignment.Left
+stamina.Font = Enum.Font.GothamMedium
+stamina.Text = "Running stamina 100%"
+stamina.Parent = gui
+local function sprintInput(_: string, state: Enum.UserInputState): Enum.ContextActionResult
+    local pressed = state == Enum.UserInputState.Begin
+    local stopped = state == Enum.UserInputState.End
+        or state == Enum.UserInputState.Cancel
+    if not pressed and not stopped then return Enum.ContextActionResult.Pass end
+    if sprintRemote and sprintRemote:IsA("RemoteEvent") then
+        sprintRemote:FireServer(pressed)
+    end
+    return Enum.ContextActionResult.Sink
+end
+ContextActionService:BindAction("StreetCitySprint", sprintInput, true,
+    Enum.KeyCode.LeftShift, Enum.KeyCode.ButtonL3)
+ContextActionService:SetTitle("StreetCitySprint", "RUN")
+ContextActionService:SetPosition("StreetCitySprint", UDim2.fromScale(0.83, 0.46))
+local function showStamina()
+    local current = player:GetAttribute("StreetCityStamina")
+    if type(current) == "number" then
+        stamina.Text = "Running stamina: " .. tostring(math.clamp(current, 0, 100)) .. "%"
+    end
+end
+player:GetAttributeChangedSignal("StreetCityStamina"):Connect(showStamina)
+showStamina()
+player.CharacterAdded:Connect(function()
+    if sprintRemote and sprintRemote:IsA("RemoteEvent") then sprintRemote:FireServer(false) end
+end)
+
 local elapsed = 0
 RunService.RenderStepped:Connect(function(dt)
     if workspace.CurrentCamera then
