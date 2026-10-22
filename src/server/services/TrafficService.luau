@@ -139,6 +139,26 @@ local function updateAgent(agent: any)
             end
         end
     end
+    -- NPC citizens are non-colliding for performance, so car AI must yield
+    -- explicitly instead of driving straight through their visual models.
+    if not agent.police then
+        local pedestrians = workspace:FindFirstChild("StreetCityPrototypeWorld")
+        local citizens = pedestrians and pedestrians:FindFirstChild("CityPedestrians")
+        if citizens then
+            for _, npc in citizens:GetChildren() do
+                if npc:IsA("Model") and npc.PrimaryPart
+                    and npc.PrimaryPart:GetAttribute("NoTrafficYield") ~= true then
+                    local offset = npc.PrimaryPart.Position - position
+                    local forwardGap = offset:Dot(flat)
+                    local sideGap = (offset - flat * forwardGap).Magnitude
+                    if forwardGap > 1 and forwardGap < 21 and sideGap < 6 then
+                        VehicleService.SetTrafficControls(car, -0.12, 0)
+                        return "driving"
+                    end
+                end
+            end
+        end
+    end
     local cross = flat:Cross(aim).Y
     local dot = math.clamp(flat:Dot(aim), -1, 1)
     local steer = math.clamp(-cross * 2.2, -1, 1)
