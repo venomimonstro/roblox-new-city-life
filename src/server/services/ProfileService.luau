@@ -18,10 +18,16 @@ local loading: {[number]: boolean} = {}
 local busy: {[number]: boolean} = {}
 local quarantined: {[number]: boolean} = {}
 local closing = false
-local sandbox = RunService:IsStudio() and game.GameId == 0
+-- Never open live player wallets during ordinary Studio Play / Team Test.
+-- Published places have nonzero GameId even when testing in Studio, so the
+-- old condition could silently write production profiles from development.
+-- A separate private staging place may explicitly opt in via a game attribute.
+local sandbox = RunService:IsStudio()
+    and game:GetAttribute("StreetCityAllowStudioDataStore") ~= true
 
 local function activeStore(): any
-    -- GetDataStore may be unavailable in an unpublished Studio place.
+    -- GetDataStore is disabled in ordinary Studio tests; a private staging
+    -- place can explicitly opt in, otherwise every Play session is memory-only.
     -- Never open it during module loading; sandbox profiles stay in memory.
     if sandbox then error("Persistent DataStore is disabled in Studio sandbox") end
     if not store then
