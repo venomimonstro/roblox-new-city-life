@@ -39,6 +39,11 @@ function Housing.Assign(player: Player): number?
         if occupied[slot] == nil then
             occupied[slot] = id
             assigned[id] = slot
+            local plot = Layout.Plot(slot)
+            if plot then
+                player:SetAttribute("StreetCityHomeSlot", slot)
+                player:SetAttribute("StreetCityHomePosition", plot.respawn)
+            end
             local marker = markers[slot]
             if marker then marker:SetAttribute("OwnerUserId", id) end
             return slot
@@ -253,6 +258,8 @@ function Housing.Start()
             if markers[slot] then markers[slot]:SetAttribute("OwnerUserId", nil) end
         end
         assigned[id] = nil
+        player:SetAttribute("StreetCityHomeSlot", nil)
+        player:SetAttribute("StreetCityHomePosition", nil)
         spawned[id] = nil
         lastGarage[id] = nil
     end)
