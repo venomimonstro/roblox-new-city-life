@@ -4,6 +4,8 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
+local RunService = game:GetService("RunService")
+local CareerRules = require(ReplicatedStorage.Shared:WaitForChild("CareerRules"))
 local ProfileService = require(script.Parent:WaitForChild("ProfileService"))
 local Rules = require(ReplicatedStorage.Shared:WaitForChild("GarageTransactions"))
 local Jobs = {}
@@ -88,8 +90,12 @@ function Jobs.Start()
                     return
                 end
                 if os.clock() < (cooldown[id] or 0) then return end
-                active[id] = {id = def.id, began = os.clock()}
-                message(player, def.title .. " started. Reach the marked destination.")
+                local rootPart = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+                if not rootPart or not rootPart:IsA("BasePart") then return end
+                active[id] = {id = def.id, began = os.clock(),
+                    origin = rootPart.Position, lastPosition = rootPart.Position,
+                    moved = 0, settling = false}
+                message(player, def.title .. " started. Travel to the marked workplace.")
             end)
         pad(root, "JobFinish_" .. def.id, def.finish, def.title,
             "Complete shift", Color3.fromRGB(83, 193, 96), function(player)
@@ -99,8 +105,14 @@ function Jobs.Start()
                     message(player, "Start this job first")
                     return
                 end
-                if os.clock() - shift.began < def.minimum then
-                    message(player, "Complete your shift before claiming payment")
+                if shift.settling then return end
+                local rootPart = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+                if not rootPart or not rootPart:IsA("BasePart") then return end
+                if os.clock() - shift.began < def.minimum
+                    or not CareerRules.CanFinishLeg(shift.origin, def.finish,
+                        rootPart.Position, os.clock() - shift.began,
+                        shift.moved, if def.driving then "vehicle" else "foot", true) then
+                    message(player, "Workplace route incomplete. You must actually travel between locations.")
                     return
                 end
                 if def.driving then
@@ -108,18 +120,23 @@ function Jobs.Start()
                     local seat = human and human.SeatPart
                     if not seat or not seat:IsA("VehicleSeat")
                         or not seat:FindFirstAncestorOfClass("Model")
-                        or seat:FindFirstAncestorOfClass("Model"):GetAttribute("StreetCityVehicle") ~= true then
+                        or seat:FindFirstAncestorOfClass("Model"):GetAttribute("OwnerUserId") ~= id
+                        or seat.Occupant ~= human then
                         message(player, "Taxi mission requires driving a city vehicle")
                         return
                     end
                 end
+                shift.settling = true
                 local paid = credit(player, def.reward)
+                if active[id] ~= shift then return end
                 if paid then
                     active[id] = nil
                     cooldown[id] = os.clock() + 25
                     message(player, def.title .. ": +" .. tostring(def.reward) .. " credits")
                 else
-                    message(player, "Payment unavailable; verify saved balance")
+                    active[id] = nil
+                    cooldown[id] = os.clock() + 20
+                    message(player, "Payment unconfirmed; check saved balance before another shift")
                 end
             end)
     end
@@ -163,6 +180,49 @@ function Jobs.Start()
                 message(player, "Sale unavailable. Your catch is still in this session.")
             end
         end)
+    local sample = 0
+    RunService.Heartbeat:Connect(function(dt)
+        sample += dt
+        if sample < 0.3 then return end
+        sample = 0
+        for id, shift in pairs(active) do
+            if shift.settling then continue end
+            local player = Players:GetPlayerByUserId(id)
+            local root = player and player.Character
+                and player.Character:FindFirstChild("HumanoidRootPart")
+            if root and root:IsA("BasePart") then
+                local pos = root.Position
+                local delta = (Vector3.new(pos.X, 0, pos.Z)
+                    - Vector3.new(shift.lastPosition.X, 0, shift.lastPosition.Z)).Magnitude
+                shift.lastPosition = pos
+                local validMode = true
+                if shift.id == "taxi" then
+                    local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+                    local seat = humanoid and humanoid.SeatPart
+                    local model = seat and seat:FindFirstAncestorOfClass("Model")
+                    validMode = seat ~= nil and seat:IsA("VehicleSeat")
+                        and model ~= nil and model:GetAttribute("OwnerUserId") == id
+                        and seat.Occupant == humanoid
+                end
+                if delta > 0 and delta < 55 and validMode then shift.moved += delta end
+            end
+        end
+    end)
+    local function onCharacter(player: Player, character: Model)
+        local humanoid = character:WaitForChild("Humanoid", 10)
+        if humanoid and humanoid:IsA("Humanoid") then
+            humanoid.Died:Connect(function()
+                active[player.UserId] = nil
+            end)
+        end
+    end
+    Players.PlayerAdded:Connect(function(player)
+        player.CharacterAdded:Connect(function(char) onCharacter(player, char) end)
+    end)
+    for _, player in Players:GetPlayers() do
+        player.CharacterAdded:Connect(function(char) onCharacter(player, char) end)
+        if player.Character then task.spawn(onCharacter, player, player.Character) end
+    end
     Players.PlayerRemoving:Connect(function(player)
         local id = player.UserId
         active[id] = nil
