@@ -94,6 +94,20 @@ function Contract.Validate()
     assert(#nature:GetChildren() >= 7,
         "[StreetCity Gate] Wildlife and nature districts incomplete")
     requireChild(ReplicatedStorage, "StreetCityDistrictState", "RemoteEvent")
+    local transit = requireChild(world, "PublicTransit", "Folder")
+    local line = requireChild(transit, "UndergroundLine", "Folder")
+    requireChild(line, "MetroTrain", "Model")
+    requireChild(transit, "CityBusNPC", "Model")
+    for _, id in {"oldtown", "downtown", "luxury"} do
+        local platform = requireChild(line, "Platform_" .. id, "BasePart")
+        assert(platform.Position.Y < -20, "[StreetCity Gate] Metro not underground")
+        local entrance = requireChild(transit, "MetroEntrance_" .. id, "BasePart")
+        requireChild(entrance, "ProximityPrompt", "ProximityPrompt")
+    end
+    for _, id in {"harbor", "west", "central", "east", "beach"} do
+        local stop = requireChild(transit, "BusStop_" .. id, "BasePart")
+        requireChild(stop, "ProximityPrompt", "ProximityPrompt")
+    end
     requireChild(world, "TimeTrialStart", "BasePart")
     local jobs = requireChild(world, "CityJobs", "Folder")
     local citizens = requireChild(world, "CityPedestrians", "Folder")
