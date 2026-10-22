@@ -56,7 +56,7 @@ local function shell(parent: Instance, n: number, style: string,
     building:SetAttribute("BuildingStyle", style)
     -- Static building models can stream out and use lightweight SLIM LODs.
     building.LevelOfDetail = Enum.ModelLevelOfDetail.SLIM
-    building.Parent = parent
+    -- Assemble the full model off-Workspace before replicating it once.
     local material = if style == "BrickHome" then Enum.Material.Brick
         elseif style == "Warehouse" or style == "Workshop" then Enum.Material.Metal
         elseif style == "Abandoned" then Enum.Material.Concrete
@@ -100,6 +100,7 @@ local function shell(parent: Instance, n: number, style: string,
             CFrame.new(center.X - 5, roofY + 1.6, center.Z + 4),
             Color3.fromRGB(115, 121, 120), Enum.Material.Metal, false)
     end
+    building.Parent = parent
     return building
 end
 
