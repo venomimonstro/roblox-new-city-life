@@ -1,6 +1,7 @@
 --!strict
 -- Shared physical homes per server; distinct active residences and respawns.
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Layout = require(ReplicatedStorage.Shared:WaitForChild("HomeLayout"))
@@ -12,6 +13,7 @@ local assigned: {[number]: number} = {}
 local markers: {[number]: BasePart} = {}
 local spawned: {[number]: number} = {}
 local lastGarage: {[number]: number} = {}
+local lastWorldRescue: {[number]: number} = {}
 local garageHandler: ((Player) -> ())? = nil
 local respawnHandler: ((Player) -> ())? = nil
 
@@ -262,6 +264,38 @@ function Housing.Start()
         player:SetAttribute("StreetCityHomePosition", nil)
         spawned[id] = nil
         lastGarage[id] = nil
+        lastWorldRescue[id] = nil
+    end)
+    -- Failsafe for Roblox collision tunnelling or unexpected physics gaps.
+    -- A living avatar must NEVER be stranded below the city terrain.
+    local rescueAccumulator = 0
+    RunService.Heartbeat:Connect(function(dt)
+        rescueAccumulator += dt
+        if rescueAccumulator < 0.5 then return end
+        rescueAccumulator = 0
+        for _, player in Players:GetPlayers() do
+            local character = player.Character
+            local human = character and character:FindFirstChildOfClass("Humanoid")
+            local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+            if not human or human.Health <= 0
+                or not rootPart or not rootPart:IsA("BasePart") then continue end
+            local position = rootPart.Position
+            if position.Y >= -45 and math.abs(position.X) <= 2285
+                and math.abs(position.Z) <= 2285 then continue end
+            local now = os.clock()
+            if now - (lastWorldRescue[player.UserId] or -100) < 3 then continue end
+            local home = Housing.GetHomePosition(player)
+            if not home then continue end
+            lastWorldRescue[player.UserId] = now
+            if human.SeatPart then human.Sit = false end
+            character:PivotTo(CFrame.new(home))
+            rootPart.AssemblyLinearVelocity = Vector3.zero
+            rootPart.AssemblyAngularVelocity = Vector3.zero
+            player:SetAttribute("StreetCityWorldRescues",
+                (player:GetAttribute("StreetCityWorldRescues") or 0) + 1)
+            warn("[StreetCity] Recovered player from invalid terrain position: "
+                .. tostring(player.UserId))
+        end
     end)
     print("[StreetCity] Residential plots ready: " .. tostring(Layout.Capacity))
 end
