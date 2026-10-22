@@ -13,6 +13,7 @@ local active: {[number]: any} = {}
 local cooldown: {[number]: number} = {}
 local catches: {[number]: number} = {}
 local fishingReady: {[number]: number} = {}
+local pendingFishSale: {[number]: boolean} = {}
 local notice: RemoteEvent
 
 local definitions = {
@@ -145,6 +146,10 @@ function Jobs.Start()
     pad(root, "Fish_Cast", shore, "Fishing Pier",
         "Cast fishing line", Color3.fromRGB(51, 139, 191), function(player)
             local id = player.UserId
+            if pendingFishSale[id] then
+                message(player, "Previous sale needs reconciliation before more fishing")
+                return
+            end
             if fishingReady[id] then
                 message(player, "Line already cast, return for your catch")
                 return
@@ -161,23 +166,33 @@ function Jobs.Start()
                 return
             end
             fishingReady[id] = nil
+        pendingFishSale[id] = nil
             catches[id] = math.min(8, (catches[id] or 0) + 1)
             message(player, "Fish caught! Bring it to the fish market.")
         end)
     pad(root, "Fish_Sell", market, "Fish Market",
         "Sell catch", Color3.fromRGB(95, 172, 119), function(player)
             local id = player.UserId
+            if pendingFishSale[id] then
+                message(player, "Fish sale already settling. Check saved balance.")
+                return
+            end
             local count = catches[id] or 0
             if count < 1 then
                 message(player, "Catch fish first at the pier")
                 return
             end
+            -- Latch before yielding in DataStore.UpdateAsync. On uncertain
+            -- result, never retry with a second operation ID against the
+            -- same catch; rejoin to reconcile the account.
+            pendingFishSale[id] = true
             local paid = credit(player, count * 85)
             if paid then
                 catches[id] = nil
+                pendingFishSale[id] = nil
                 message(player, "Sold " .. count .. " fish for " .. (count * 85) .. " credits")
             else
-                message(player, "Sale unavailable. Your catch is still in this session.")
+                message(player, "Fish sale unconfirmed; reconnect and verify credits.")
             end
         end)
     local sample = 0
