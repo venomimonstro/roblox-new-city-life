@@ -283,7 +283,7 @@ function Career.Start()
             local player = Players:GetPlayerByUserId(id)
             -- Expire abandoned missions; otherwise a disconnected or idle
             -- employee can indefinitely lock themselves out of every job.
-            if now - (job.startedAt or job.began) > 1200 then
+            if ShiftRegistry.Expired(job.startedAt or job.began, now) then
                 if player then
                     endMission(player, "Shift expired after 20 minutes; accept a new job")
                 else
