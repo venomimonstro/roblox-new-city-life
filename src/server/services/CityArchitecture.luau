@@ -156,13 +156,13 @@ function Architecture.DecorateHome(estate: Model, plot: any, slot: number)
         garage.Color = roofColor
         detail(exterior, "GarageFascia",
             Vector3.new(14.6, 0.8, 0.65),
-            CFrame.new(plot.garage.X, 11.85, plot.garage.Z - towardsRoad * 13.25),
+            CFrame.new(plot.garage.X, 11.85, plot.garage.Z + towardsRoad * 13.25),
             Color3.fromRGB(225, 222, 213), Enum.Material.Concrete)
         -- Open driveway: the roller door is deliberately transparent to physics.
         for _, offset in {-3.9, 3.9} do
             detail(exterior, "GarageEdge", Vector3.new(0.4, 8, 0.35),
                 CFrame.new(plot.garage.X + offset, 4,
-                    plot.garage.Z - towardsRoad * 13.25),
+                    plot.garage.Z + towardsRoad * 13.25),
                 Color3.fromRGB(226, 222, 208), Enum.Material.Metal)
         end
     end
