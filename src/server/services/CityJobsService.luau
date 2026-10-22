@@ -51,8 +51,9 @@ local function validPlayer(player: Player, position: Vector3): boolean
     local character = player.Character
     local human = character and character:FindFirstChildOfClass("Humanoid")
     local root = character and character:FindFirstChild("HumanoidRootPart")
-    return human ~= nil and human.Health > 0 and root ~= nil
-        and root:IsA("BasePart") and (root.Position - position).Magnitude <= 15
+    return human ~= nil and human.Health > 0 and human.SeatPart == nil
+        and root ~= nil and root:IsA("BasePart")
+        and (root.Position - position).Magnitude <= 15
 end
 
 local function pad(parent: Instance, name: string, position: Vector3,
@@ -119,7 +120,7 @@ function Jobs.Start()
                 end
                 active[id] = {id = def.id, began = os.clock(),
                     origin = rootPart.Position, lastPosition = rootPart.Position,
-                    moved = 0, settling = false}
+                    lastSampleAt = os.clock(), moved = 0, settling = false}
                 route(player, def)
                 message(player, def.title .. " started. Travel to the marked workplace.")
             end)
@@ -234,6 +235,9 @@ function Jobs.Start()
                 local pos = root.Position
                 local delta = (Vector3.new(pos.X, 0, pos.Z)
                     - Vector3.new(shift.lastPosition.X, 0, shift.lastPosition.Z)).Magnitude
+                local now = os.clock()
+                local elapsed = now - (shift.lastSampleAt or now)
+                shift.lastSampleAt = now
                 shift.lastPosition = pos
                 local validMode = true
                 if shift.id == "taxi" then
@@ -244,12 +248,17 @@ function Jobs.Start()
                         and model ~= nil and model:GetAttribute("OwnerUserId") == id
                         and seat.Occupant == humanoid
                 end
-                if delta > 55 then
+                local mode = if shift.id == "taxi" then "vehicle" else "foot"
+                if mode == "foot" then
+                    local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+                    validMode = humanoid ~= nil and humanoid.SeatPart == nil
+                end
+                if delta > CareerRules.MaximumMovementForSample(elapsed, mode) then
                     shift.moved = 0
                     shift.drivenDistance = 0
-                    shift.began = os.clock()
+                    shift.began = now
                     shift.origin = pos
-                elseif delta > 0 and delta < 55 and validMode then
+                elseif delta > 0 and validMode then
                     shift.moved += delta
                     if shift.id == "taxi" then
                         shift.drivenDistance = (shift.drivenDistance or 0) + delta
