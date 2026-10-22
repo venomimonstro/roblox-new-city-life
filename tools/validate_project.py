@@ -32,6 +32,9 @@ REQUIRED = (
     "src/shared/PropertyCatalog.luau",
     "src/shared/PropertyTransactions.luau",
     "src/shared/HomeLayout.luau",
+    "src/shared/LegalCareerCatalog.luau",
+    "src/shared/CareerRules.luau",
+    "src/shared/LifeEconomy.luau",
     "src/server/services/DistrictSocietyService.luau",
     "src/server/services/PropertyService.luau",
     "src/server/services/PropertyMarketService.luau",
@@ -43,11 +46,17 @@ REQUIRED = (
     "src/server/services/TrafficService.luau",
     "src/server/services/LifestyleService.luau",
     "src/server/services/CityJobsService.luau",
+    "src/server/services/LegalCareerService.luau",
+    "src/server/services/WorkShiftRegistry.luau",
+    "src/server/services/LifeAndDeathService.luau",
+    "src/server/services/BountyService.luau",
     "src/server/services/CitizenService.luau",
     "src/server/services/WantedService.luau",
     "src/server/services/CrimeEconomyService.luau",
     "src/server/services/ArmoryService.luau",
     "src/server/dev/CityLifeTests.luau",
+    "src/server/dev/LegalCareerTests.luau",
+    "src/server/dev/LifeEconomyTests.luau",
     "src/server/dev/DistrictEconomyTests.luau",
     "src/server/dev/SocialSystemsTests.luau",
     "src/server/services/TerritoryService.luau",
@@ -226,6 +235,44 @@ def main() -> None:
     if "Rules.SetAllegiance" not in (
         ROOT / "src/server/services/CrewService.luau").read_text(encoding="utf-8"):
         raise SystemExit("P0: gang and federal teams cannot claim their territory")
+
+    # Career/clinic release contract: a source-only check, not a Roblox Studio run.
+    career_source = (ROOT / "src/server/services/LegalCareerService.luau").read_text(encoding="utf-8")
+    career_catalog = (ROOT / "src/shared/LegalCareerCatalog.luau").read_text(encoding="utf-8")
+    mission_rules = (ROOT / "src/shared/CareerRules.luau").read_text(encoding="utf-8")
+    legacy_jobs = (ROOT / "src/server/services/CityJobsService.luau").read_text(encoding="utf-8")
+    payout_source = (ROOT / "src/server/services/BountyService.luau").read_text(encoding="utf-8")
+    life_source = (ROOT / "src/server/services/LifeAndDeathService.luau").read_text(encoding="utf-8")
+    for module in ("LegalCareerService", "LifeAndDeathService", "BountyService"):
+        if module + ".Start()" not in bootstrap:
+            raise SystemExit("P0: critical careers/death system not started: " + module)
+    for fixture in ("LegalCareerTests", "LifeEconomyTests"):
+        if 'WaitForChild("' + fixture + '")).Run()' not in bootstrap:
+            raise SystemExit("P0: Studio life or career regression tests not wired: " + fixture)
+    if career_catalog.count('id="') < 16:
+        raise SystemExit("P0: missing promised variety of legal careers")
+    if "ShiftRegistry.Claim" not in career_source or "ShiftRegistry.Claim" not in legacy_jobs:
+        raise SystemExit("P0: two concurrent jobs can print credits for one trip")
+    if "ShiftRegistry.Release" not in career_source or "ShiftRegistry.Release" not in legacy_jobs:
+        raise SystemExit("P0: shift locks cannot be released")
+    if "CareerRules.CanFinishLeg" not in career_source or "CareerRules.CanFinishLeg" not in legacy_jobs:
+        raise SystemExit("P0: jobs may pay for standing still or teleporting")
+    if "if not matchesRequiredMode then return false end" not in mission_rules:
+        raise SystemExit("P0: foot and driving mission modes are inverted")
+    if "pendingFishSale[id] = true" not in legacy_jobs:
+        raise SystemExit("P0: asynchronous fish sale can pay twice")
+    if "StreetCityCareerStatus" not in career_source:
+        raise SystemExit("P0: route instructions not sent to players")
+    if "StreetCityCareerStatus" not in (ROOT / "src/client/bootstrap.client.luau").read_text(encoding="utf-8"):
+        raise SystemExit("P0: mobile player cannot see mission waypoints")
+    if "Economy.DeathSettlement" not in life_source or "Bounty.ResolveDeath" not in life_source:
+        raise SystemExit("P0: death misses hospital bill or verified bounty settlement")
+    if "securityBonds" not in profile_schema or "homeCredits" not in profile_schema:
+        raise SystemExit("P0: safety investments or home cash not persisted")
+    if "math.floor(os.time() / 1800)" not in payout_source:
+        raise SystemExit("P0: wanted bounty operations lack replay window")
+    if "StreetCityWantedPosters" not in (ROOT / "src/client/bootstrap.client.luau").read_text(encoding="utf-8"):
+        raise SystemExit("P1: wanted posters not rendered to bounty hunters")
 
     workflows = ROOT / ".github" / "workflows"
     if workflows.exists() and any(workflows.iterdir()):
