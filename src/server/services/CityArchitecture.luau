@@ -128,9 +128,12 @@ function Architecture.DecorateHome(estate: Model, plot: any, slot: number)
                 * CFrame.Angles(0, 0, math.rad(side * 18)),
             roofColor, Enum.Material.Slate)
     end
-    detail(exterior, "FrontDoor", Vector3.new(2.7, 5.5, 0.16),
+    local door = detail(exterior, "FrontDoor", Vector3.new(2.7, 5.5, 0.16),
         CFrame.new(x, house.Position.Y - house.Size.Y / 2 + 2.8, facing),
         Color3.fromRGB(72, 84, 94), Enum.Material.Wood)
+    -- Unlike decorative windows, the entry really closes a walkable doorway.
+    door.CanCollide = true
+    door.CanQuery = true
     detail(exterior, "DoorHandle", Vector3.new(0.16, 0.22, 0.25),
         CFrame.new(x + 0.8, house.Position.Y - house.Size.Y / 2 + 2.8,
             facing + towardsRoad * 0.16), Color3.fromRGB(216, 188, 111),
@@ -150,6 +153,18 @@ function Architecture.DecorateHome(estate: Model, plot: any, slot: number)
                 Color3.fromRGB(228, 219, 200), Enum.Material.Concrete)
         end
     end
+    -- Actual roof support: players must not fall into an attic through
+    -- collision-free pitched roof decoration.
+    local ceiling = Instance.new("Part")
+    ceiling.Name = "HouseCeiling"
+    ceiling.Size = Vector3.new(12.7, 0.35, 15.7)
+    ceiling.Position = Vector3.new(x, yTop + 0.05, z)
+    ceiling.Color = Color3.fromRGB(201, 195, 181)
+    ceiling.Material = Enum.Material.WoodPlanks
+    ceiling.Anchored = true
+    ceiling.CanCollide = true
+    ceiling.CanQuery = true
+    ceiling.Parent = estate
     local garage = estate:FindFirstChild("GarageRoof")
     if garage and garage:IsA("BasePart") then
         garage.Material = Enum.Material.Slate
@@ -174,6 +189,7 @@ function Architecture.DecorateHome(estate: Model, plot: any, slot: number)
             CFrame.new(sign.Position.X, sign.Position.Y + 1.1, sign.Position.Z),
             Color3.fromRGB(235, 226, 199), Enum.Material.SmoothPlastic)
     end
+    return door
 end
 
 return Architecture
