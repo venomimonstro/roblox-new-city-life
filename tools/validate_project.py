@@ -76,6 +76,7 @@ REQUIRED = (
     "src/server/services/ArmoryService.luau",
     "src/server/dev/CityLifeTests.luau",
     "src/server/dev/LegalCareerTests.luau",
+    "src/server/dev/IntegratedTestRunner.luau",
     "src/server/dev/CareerWorldTests.luau",
     "src/server/dev/TransitAndNpcTests.luau",
     "src/server/dev/LifeEconomyTests.luau",
@@ -151,6 +152,10 @@ def main() -> None:
     assert tree["Workspace"]["$properties"]["StreamingEnabled"] is True
 
     bootstrap = (ROOT / "src/server/bootstrap.server.luau").read_text(encoding="utf-8")
+    studio_runner = (ROOT / "src/server/dev/IntegratedTestRunner.luau").read_text(encoding="utf-8")
+    if 'WaitForChild("IntegratedTestRunner")).Run()' not in bootstrap:
+        raise SystemExit("Missing integrated Studio runner")
+
     shop_position = bootstrap.find("GarageMarketplaceService.Start()")
     race_position = bootstrap.find("RaceService.Start()")
     if shop_position == -1 or race_position == -1 or shop_position > race_position:
@@ -180,7 +185,7 @@ def main() -> None:
         raise SystemExit("Suspension safety regression: noncollidable decoration is queryable")
 
     scenario = (ROOT / "src/server/dev/ScenarioTests.luau").read_text(encoding="utf-8")
-    if 'WaitForChild("ScenarioTests")).Run()' not in bootstrap:
+    if '"ScenarioTests"' not in studio_runner:
         raise SystemExit("Scenario simulation is not connected to Studio bootstrap")
     for rule in ("Rules.AwardCredits", "Rules.PurchaseVehicle", "Rules.PurchasePart",
                  "Rules.InstallPart", "Outcome.Classify", "Parking.Position"):
@@ -192,7 +197,7 @@ def main() -> None:
     if 'WaitForChild("RaceCourse")' not in race or "CheckpointRadius = 16" not in course:
         raise SystemExit("Race must use shared validated checkpoint geometry")
 
-    if 'WaitForChild("SimulationTests")).Run()' not in bootstrap:
+    if '"SimulationTests"' not in studio_runner:
         raise SystemExit("Missing Studio fake-DataStore simulation startup")
 
     dev_garage = (ROOT / "src/server/services/GarageService.luau").read_text(encoding="utf-8")
@@ -262,7 +267,7 @@ def main() -> None:
                    "BankNetworkService", "NatureService"):
         if module + ".Start()" not in bootstrap:
             raise SystemExit("P0: gameplay service not initialized: " + module)
-    if 'WaitForChild("DistrictEconomyTests")).Run()' not in bootstrap:
+    if '"DistrictEconomyTests"' not in studio_runner:
         raise SystemExit("New economy migrations and land-price tests not wired")
     properties = (ROOT / "src/shared/PropertyTransactions.luau").read_text(encoding="utf-8")
     if 'profile.credits -= quotedPrice' not in properties:
@@ -272,7 +277,7 @@ def main() -> None:
     territory = (ROOT / "src/server/services/TerritoryService.luau").read_text(encoding="utf-8")
     if "TerritoryService.Start()" not in bootstrap or "TerritoryControl" not in territory:
         raise SystemExit("P0: district influence control absent from published server")
-    if "SocialSystemsTests" not in bootstrap:
+    if '"SocialSystemsTests"' not in studio_runner:
         raise SystemExit("P0: Studio civic economy assertions are disconnected")
     wallet_source = (ROOT / "src/shared/GarageTransactions.luau").read_text(encoding="utf-8")
     if wallet_source.count("function Rules.SpendCredits(") != 1:
@@ -286,7 +291,7 @@ def main() -> None:
             raise SystemExit("P0: incomplete civic city bootstrap: " + service)
     if "FactionService.Start()" in bootstrap:
         raise SystemExit("P0: duplicate faction registries produce diverging player teams")
-    if 'WaitForChild("SocialSystemsTests")).Run()' not in bootstrap:
+    if '"SocialSystemsTests"' not in studio_runner:
         raise SystemExit("Social systems Studio acceptance suite not wired")
     if "Rules.SetAllegiance" not in (
         ROOT / "src/server/services/CrewService.luau").read_text(encoding="utf-8"):
@@ -303,7 +308,7 @@ def main() -> None:
         if module + ".Start()" not in bootstrap:
             raise SystemExit("P0: critical careers/death system not started: " + module)
     for fixture in ("LegalCareerTests", "LifeEconomyTests"):
-        if 'WaitForChild("' + fixture + '")).Run()' not in bootstrap:
+        if ('"' + fixture + '"') not in studio_runner:
             raise SystemExit("P0: Studio life or career regression tests not wired: " + fixture)
     if career_catalog.count('id="') < 16:
         raise SystemExit("P0: missing promised variety of legal careers")
@@ -353,7 +358,7 @@ def main() -> None:
     for service in ("StreetDetailService", "SprintService"):
         if service + ".Start()" not in bootstrap:
             raise SystemExit("P0: walking/driving world service not started: " + service)
-    if 'WaitForChild("WorldTraversalTests")).Run()' not in bootstrap:
+    if '"WorldTraversalTests"' not in studio_runner:
         raise SystemExit("P0: actual Studio road seams and residential access tests missing")
     if "WorldPerimeter" not in world and "local extent = 2304" not in world:
         raise SystemExit("P0: terrain must extend beyond the end of every road")
@@ -381,7 +386,7 @@ def main() -> None:
     # City streets now have ONE collision owner. Weather graphics and
     # decorations are not allowed to provide fake suspension ground.
     city_test = (ROOT / "src/server/dev/CityTraversalTests.luau").read_text(encoding="utf-8")
-    if 'WaitForChild("CityTraversalTests")).Run()' not in bootstrap:
+    if '"CityTraversalTests"' not in studio_runner:
         raise SystemExit("P0: full road/garage/ocean collision tests not wired")
     for invariant in ("Road collision missing", "House must have a real opening door",
                       "Car spawn is not above its OWN physical garage floor",
@@ -425,7 +430,7 @@ def main() -> None:
     # Ensure repaired traffic never repeatedly spawns onto active players/vehicles.
     traffic_safety = (ROOT / "src/server/dev/TrafficSafetyTests.luau").read_text(encoding="utf-8")
     traffic_source = (ROOT / "src/server/services/TrafficService.luau").read_text(encoding="utf-8")
-    if 'WaitForChild("TrafficSafetyTests")).Run()' not in bootstrap:
+    if '"TrafficSafetyTests"' not in studio_runner:
         raise SystemExit("P0: NPC traffic and seam checks not in Studio startup")
     for condition in ("agent.respawnAt = os.clock() + 8",
                       "rootPart.Position - midpoint", "model.PrimaryPart.Position - midpoint",
@@ -459,7 +464,7 @@ def main() -> None:
     minimap = (ROOT / "src/client/MapHUD.client.luau").read_text(encoding="utf-8")
     if "CityInfillService.Start()" not in bootstrap:
         raise SystemExit("P0: procedural city infill service not started")
-    if 'WaitForChild("CityInfillTests")).Run()' not in bootstrap:
+    if '"CityInfillTests"' not in studio_runner:
         raise SystemExit("P0: Studio city infill collision acceptance not connected")
     if '"CityInfill"' not in infill or "GetPartBoundsInBox" not in infill:
         raise SystemExit("P0: generator lacks reserved-lot occupancy collision checks")
@@ -483,7 +488,7 @@ def main() -> None:
     boot = (ROOT / "src/server/bootstrap.server.luau").read_text(encoding="utf-8")
     if "Damage.Impact(" not in vehicle_service or "Damage.DriveFactor(" not in vehicle_service:
         raise SystemExit("P0: impact/crash model not connected to live server vehicle physics")
-    if 'WaitForChild("VehicleDamageTests")).Run()' not in boot:
+    if '"VehicleDamageTests"' not in studio_runner:
         raise SystemExit("P0: vehicle damage Studio tests not hooked up")
     if "if not grounded or deltaSpeed < 15" not in vehicle_damage:
         raise SystemExit("P0: impact from airborne fall could damage before landing")
@@ -491,7 +496,7 @@ def main() -> None:
     for service in ("PublicTransitService", "NpcLifeService"):
         if service + ".Start()" not in bootstrap:
             raise SystemExit("Transit or NPC-life simulation omitted from game startup: " + service)
-    if 'WaitForChild("TransitAndNpcTests")).Run()' not in bootstrap:
+    if '"TransitAndNpcTests"' not in studio_runner:
         raise SystemExit("Transit and NPC life suite not linked to Studio")
     transit = (ROOT / "src/server/services/PublicTransitService.luau").read_text(encoding="utf-8")
     for token in ("MetroEntrance_", "PlatformAccess_", "MetroExit_", "BusStop_",
@@ -511,7 +516,7 @@ def main() -> None:
             raise SystemExit("Transport class missing from specs or active fleet: " + name)
     if "TransportPhysicsService.Start()" not in bootstrap:
         raise SystemExit("New transport physics service not started")
-    if 'WaitForChild("TransportPhysicsTests")).Run()' not in bootstrap:
+    if '"TransportPhysicsTests"' not in studio_runner:
         raise SystemExit("New transport studio simulation not connected")
     if 'TransportInput' not in client_source or 'TransportInput' not in transport_source:
         raise SystemExit("New vehicle controller has no client/server input link")
@@ -536,9 +541,9 @@ def main() -> None:
         raise SystemExit("P0: legacy jobs can be farmed via microteleports or double shifts")
     if "profile.deathCount = math.min(100000000" not in economy:
         raise SystemExit("P0: medical respawn breaks after bounded account counters fill")
-    if 'WaitForChild("LegalCareerTests")).Run()' not in bootstrap:
+    if '"LegalCareerTests"' not in studio_runner:
         raise SystemExit("P0: Studio career simulations disconnected")
-    if 'WaitForChild("LifeEconomyTests")).Run()' not in bootstrap:
+    if '"LifeEconomyTests"' not in studio_runner:
         raise SystemExit("P0: Studio debt and free resurrection tests disconnected")
 
     # A teleport must invalidate a mission rather than silently relocate
@@ -552,7 +557,7 @@ def main() -> None:
     if 'shift.origin = pos' in legacy.split("if delta > CareerRules.MaximumMovementForSample")[1].split("elseif delta > 0")[0]:
         raise SystemExit("P0: legacy job re-bases origin after teleport")
 
-    if 'WaitForChild("CareerWorldTests")).Run()' not in bootstrap:
+    if '"CareerWorldTests"' not in studio_runner:
         raise SystemExit("P0: playable career routes lack Studio ground-collision acceptance")
     world_jobs = (ROOT / "src/server/dev/CareerWorldTests.luau").read_text(encoding="utf-8")
     if "workspace:Raycast" not in world_jobs or "Fish_Sell" not in world_jobs:
