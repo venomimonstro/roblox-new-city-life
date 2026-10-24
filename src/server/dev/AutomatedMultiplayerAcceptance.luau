@@ -13,7 +13,6 @@ local Housing = require(Services:WaitForChild("HousingService"))
 local Garage = require(Services:WaitForChild("PersonalGarage"))
 local Test = {}
 local ARG = "STREET_CITY_RELEASE_AUTOMATION_V1"
-local watchers: {[number]: boolean} = {}
 local clientReceipts: {[number]: boolean} = {}
 
 local function assertPlayer(player: Player): (any, any)
@@ -125,15 +124,20 @@ function Test.Start()
     end)
     Players.PlayerRemoving:Connect(function(player)
         clientReceipts[player.UserId] = nil
-        watchers[player.UserId] = nil
     end)
 
     task.spawn(function()
         local passed, report = xpcall(function()
             local runnerReceipt = ReplicatedStorage:GetAttribute("StreetCityStudioSuiteReceipt")
-            assert(type(runnerReceipt) == "string" and runnerReceipt:find('"status":"PASS"', 1, true),
-                "Studio unit/integration suites did not produce a PASS receipt")
-            return runTwoPlayers()
+            assert(type(runnerReceipt) == "string",
+                "No Studio suite receipt (suite runner did not complete)")
+            local suites = HttpService:JSONDecode(runnerReceipt)
+            assert(suites.status == "PASS" and suites.totalSuites == 16
+                and suites.passedSuites == 16 and suites.failedSuites == 0,
+                "Mandatory Luau suite receipt incomplete or failed")
+            local report = runTwoPlayers()
+            report.suites = suites
+            return report
         end, debug.traceback)
         local result = if passed then report else {status="FAIL", mode=ARG,
             error=tostring(report)}
