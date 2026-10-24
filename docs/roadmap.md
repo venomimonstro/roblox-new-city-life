@@ -1,5 +1,8 @@
 # Product roadmap — Street City Online
 
+> **Historical roadmap (00–15).** This table predates the 2026-10-24 GTA-like city expansion and no longer describes complete present-day sprint scope. See [the verified sprint 00–21 commercial readiness audit](RELEASE_READINESS_2026-10-24.md). Source features developed after this roadmap are **not** necessarily runtime tested or release-ready. The release decision remains **BLOCKED**.
+
+
 > **Актуализация аудита: 24 октября 2026.** Эта дорожная карта начиналась
 > как описание автомобильного прототипа. Сейчас в `main` реализованы
 > исходные модули профессий, NPC, преступности, жилья, банков, охраны,
