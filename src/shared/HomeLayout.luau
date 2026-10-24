@@ -6,7 +6,10 @@ local Layout = {}
 Layout.Capacity = 48
 
 function Layout.Preferred(userId: number): number
-    assert(type(userId) == "number" and userId >= 0, "Invalid Roblox user id")
+    -- Multi-client Studio creates test users with negative UserIds.
+    -- This validation must work for both production IDs and simulated clients.
+    assert(type(userId) == "number" and userId == userId and userId % 1 == 0
+        and math.abs(userId) < 9007199254740992, "Invalid Roblox user id")
     return userId % Layout.Capacity
 end
 
