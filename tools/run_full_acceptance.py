@@ -87,6 +87,8 @@ def main() -> int:
     parser.add_argument("--studio", help="Path to installed Roblox Studio executable")
     parser.add_argument("--timeout", type=int, default=420)
     parser.add_argument("--receipt", default="street-city-acceptance.json")
+    parser.add_argument("--log", default="street-city-acceptance.log",
+                        help="Keep complete Studio output for failed-run diagnosis")
     args = parser.parse_args()
     try:
         output_path = Path(args.receipt).resolve()
@@ -122,6 +124,7 @@ def main() -> int:
             log = process.stdout + "\n" + process.stderr
             if output.exists():
                 log += "\n" + output.read_text(encoding="utf-8", errors="replace")
+            Path(args.log).resolve().write_text(log, encoding="utf-8")
             if process.returncode != 0:
                 raise RuntimeError(f"Studio returned {process.returncode}: {log[-5000:]}")
             receipt = validated_receipt(log)
@@ -133,6 +136,7 @@ def main() -> int:
                                    encoding="utf-8")
             print(f"PASS: all 16 Studio suites plus {len(NEEDED)} real multiplayer checks")
             print("Receipt:", output_path)
+            print("Studio log:", Path(args.log).resolve())
             print("SOURCE COMMIT:", commit_sha)
             print("COMMERCIAL RELEASE BLOCKED pending published staging DataStore, Android performance and real-money receipt certification")
         return 0
