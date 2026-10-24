@@ -1,5 +1,24 @@
 # Product roadmap — Street City Online
 
+> **Актуализация аудита: 24 октября 2026.** Эта дорожная карта начиналась
+> как описание автомобильного прототипа. Сейчас в `main` реализованы
+> исходные модули профессий, NPC, преступности, жилья, банков, охраны,
+> природного мира и метро. Поэтому ранние пометки «planned» и раздел
+> «Explicit exclusions from first release» ниже отражают первоначальный
+> замысел, а не текущую фактическую сборку.
+>
+> **Единый источник статуса коммерческого выпуска:**
+> [Commercial whole-game audit](COMMERCIAL_RELEASE_AUDIT_2026-10-24.md).
+> Наличие кода, 16 тестовых модулей и Studio runner НЕ означает выполненный
+> runtime-прогон. Без реального отчёта Studio, опубликованного staging DataStore,
+> проверенной покупки Robux и профилирования Android — **RELEASE HOLD**.
+>
+> **Путь проверок:** `python3 tools/run_full_acceptance.py` на машине
+> с установленными Rojo и Roblox Studio запускает исходные проверки, сборку,
+> 16 Suite в движке и два настоящих Studio-клиента. Это лишь *core gate*:
+> отдельные staging/платежи/нагрузка также обязательны. Никакого GitHub Actions.
+>
+
 ## Release definition
 Open world **life simulator**, first release focuses on free exploration + cars + tuning + racing, while future gameplay modules remain possible. A public release is **not** permitted just because code is committed.
 
