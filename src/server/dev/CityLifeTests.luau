@@ -23,6 +23,8 @@ function Tests.Run()
     end
     assert(Layout.Plot(-1) == nil and Layout.Plot(48) == nil)
     assert(Layout.Preferred(48) == 0 and Layout.Preferred(49) == 1)
+    assert(Layout.Preferred(-1) == 47 and Layout.Preferred(-2) == 46,
+        "Studio simulated users must receive independent home plots")
 
     local catalogIds = {}
     for id = 1, 3 do
