@@ -96,6 +96,7 @@ local success, err = pcall(function()
     if RunService:IsStudio() then
         require(script.Parent:WaitForChild("dev"):WaitForChild("PlayerJourneyProbe")).Start()
         require(script.Parent:WaitForChild("dev"):WaitForChild("IntegratedTestRunner")).Run()
+        require(script.Parent:WaitForChild("dev"):WaitForChild("AutomatedMultiplayerAcceptance")).Start()
     end
 end)
 
