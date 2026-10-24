@@ -1,5 +1,20 @@
 # Street City Online — Roblox open-world game prototype
 
+## Automated whole-game release acceptance (no CI)
+
+On a local workstation with **Roblox Studio** and **Rojo**, run:
+
+```sh
+python3 tools/run_full_acceptance.py
+```
+
+This runs source checks, builds the Rojo place, starts Studio with **two simulated Roblox clients**, executes all **16 Luau Studio suites**, and checks actual player homes/cars, both client interfaces, hospitalization, free respawn and isolation between accounts. It writes `street-city-acceptance.json` and `street-city-acceptance.log`, and **fails closed** on missing tools, failed tests, absent receipts or timeout.
+
+**Important:** This automated runner has been authored but not executed within the assistant environment. A source validation pass does not mean the game is approved for commercial launch. Multiplayer DataStore faults, mobile frame-rate and paid Robux receipts have separate blocking gates.
+
+See [Commercial release audit — 2026-10-24](docs/RELEASE_READINESS_2026-10-24.md) for sprint statuses and remaining acceptance tests.
+
+
 **Current status (22 October 2026): extensive game source and Studio tests, NOT a verified playable public release.** Player homes/garages, cars, roads, district NPCs, open-world traffic, legal careers, races, crime, police, shops, in-game credits, fishing, nature, transit and local social systems are implemented at different prototype levels. They have **not** passed an end-to-end Roblox Studio, live multi-client and DataStore acceptance.
 
 ## Actually try the game (no GitHub Actions/CI)
