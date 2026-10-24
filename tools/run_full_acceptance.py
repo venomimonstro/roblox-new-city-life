@@ -28,6 +28,19 @@ NEEDED = {
 }
 
 
+def pinned_source_commit() -> str:
+    """A commercial receipt must identify a committed, unmodified source tree."""
+    sha = subprocess.run(["git", "rev-parse", "--verify", "HEAD"],
+                         cwd=ROOT, capture_output=True, text=True, timeout=10)
+    if sha.returncode or not re.fullmatch(r"[0-9a-f]{40}", sha.stdout.strip()):
+        raise RuntimeError("No verified Git commit: test a real repository checkout")
+    dirty = subprocess.run(["git", "status", "--porcelain", "--untracked-files=all"],
+                           cwd=ROOT, capture_output=True, text=True, timeout=15)
+    if dirty.returncode or dirty.stdout.strip():
+        raise RuntimeError("Working tree is dirty: commit exact contents before running release gate")
+    return sha.stdout.strip()
+
+
 def studio_executable(explicit: str | None) -> str | None:
     if explicit:
         return explicit if Path(explicit).is_file() else None
@@ -77,6 +90,7 @@ def main() -> int:
     args = parser.parse_args()
     try:
         output_path = Path(args.receipt).resolve()
+        commit_sha = pinned_source_commit()
         rojo = shutil.which("rojo")
         studio = studio_executable(args.studio)
         if not rojo:
@@ -111,12 +125,16 @@ def main() -> int:
             if process.returncode != 0:
                 raise RuntimeError(f"Studio returned {process.returncode}: {log[-5000:]}")
             receipt = validated_receipt(log)
+            receipt["sourceCommit"] = commit_sha
+            receipt["commercialReleaseCertified"] = False
+            receipt["scope"] = "Studio 16-suite plus two-client core only; staging/commerce/performance not passed"
             output_path.parent.mkdir(parents=True, exist_ok=True)
             output_path.write_text(json.dumps(receipt, ensure_ascii=False, indent=2),
                                    encoding="utf-8")
             print(f"PASS: all 16 Studio suites plus {len(NEEDED)} real multiplayer checks")
             print("Receipt:", output_path)
-            print("Remaining: published DataStore, Android FPS and real-money receipts")
+            print("SOURCE COMMIT:", commit_sha)
+            print("COMMERCIAL RELEASE BLOCKED pending published staging DataStore, Android performance and real-money receipt certification")
         return 0
     except (ValueError, OSError, RuntimeError, subprocess.TimeoutExpired) as exc:
         print("RELEASE BLOCKED:", exc, file=sys.stderr)
