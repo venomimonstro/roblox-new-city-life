@@ -92,6 +92,10 @@ REQUIRED = (
     "src/server/services/StartupContract.luau",
     "src/server/services/WorldSurfaceAudit.luau",
     "tools/release_gate.py",
+    "tools/run_full_acceptance.py",
+    "tools/studio/launch_release_acceptance.luau",
+    "src/server/dev/AutomatedMultiplayerAcceptance.luau",
+    "src/client/AutomatedClientAcceptance.client.luau",
     "docs/architecture.md",
     "docs/roadmap.md",
     "docs/quality.md",
@@ -598,6 +602,33 @@ def main() -> None:
     legacy = (ROOT / "src/server/services/CityJobsService.luau").read_text(encoding="utf-8")
     if "shift.drivenDistance" not in legacy or "seat.Occupant == humanoid" not in legacy:
         raise SystemExit("P0: taxi must require owned driver history while permitting parked dropoff")
+
+    # Whole-game executable evidence: require real Studio 2-client acceptance,
+    # completed server suite receipt and a machine-checkable local driver.
+    runner_src = (ROOT / "src/server/dev/IntegratedTestRunner.luau").read_text(encoding="utf-8")
+    multi_src = (ROOT / "src/server/dev/AutomatedMultiplayerAcceptance.luau").read_text(encoding="utf-8")
+    client_src = (ROOT / "src/client/AutomatedClientAcceptance.client.luau").read_text(encoding="utf-8")
+    driver_src = (ROOT / "tools/run_full_acceptance.py").read_text(encoding="utf-8")
+    studio_script = (ROOT / "tools/studio/launch_release_acceptance.luau").read_text(encoding="utf-8")
+    home_layout = (ROOT / "src/shared/HomeLayout.luau").read_text(encoding="utf-8")
+    if 'StreetCityStudioSuiteReceipt' not in runner_src:
+        raise SystemExit("P0: integrated Studio suites do not publish actual result")
+    if 'WaitForChild("AutomatedMultiplayerAcceptance")).Start()' not in bootstrap:
+        raise SystemExit("P0: whole-game two-client acceptance not bootstrapped")
+    if 'totalSuites == 16' not in multi_src or 'passedSuites == 16' not in multi_src:
+        raise SystemExit("P0: Studio multi-client launch may ignore failing suites")
+    for test in ("two_real_clients_connected", "two_client_HUD_receipts",
+                 "actual_death_and_free_home_respawn", "other_account_untouched"):
+        if test not in multi_src or test not in driver_src:
+            raise SystemExit("P0: missing whole-game player journey test: " + test)
+    if 'StudioTestService:ExecuteMultiplayerTestAsync(2,' not in studio_script:
+        raise SystemExit("P0: automated acceptance never starts real players")
+    if 'StreetCityClientTestReceipt' not in client_src:
+        raise SystemExit("P0: missing actual client UI verification")
+    if 'math.abs(userId)' not in home_layout:
+        raise SystemExit("P0: negative Studio simulated player IDs cannot own homes")
+    if 'Studio returned' not in driver_src or 'No success marker' not in driver_src:
+        raise SystemExit("P0: release acceptance does not fail closed")
 
     workflows = ROOT / ".github" / "workflows"
     if workflows.exists() and any(workflows.iterdir()):
