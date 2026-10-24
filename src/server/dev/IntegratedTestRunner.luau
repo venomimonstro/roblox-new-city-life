@@ -63,6 +63,7 @@ function Runner.Run()
     -- Receipt is human and machine-readable in the Studio server Output.
     local encoded = HttpService:JSONEncode(receipt)
     print("[City Acceptance] RECEIPT " .. encoded)
+    game:GetService("ReplicatedStorage"):SetAttribute("StreetCityStudioSuiteReceipt", encoded)
     if not passed then
         error("[City Acceptance] " .. tostring(#failures)
             .. " integration suites failed:\n" .. table.concat(failures, "\n"))
